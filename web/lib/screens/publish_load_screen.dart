@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../loads/load_api.dart';
 import '../loads/load_models.dart';
 import '../state/app_providers.dart';
+import '../widgets/app_nav_bar.dart';
 
 class PublishLoadScreen extends ConsumerStatefulWidget {
   const PublishLoadScreen({super.key});
@@ -65,7 +66,6 @@ class _PublishLoadScreenState extends ConsumerState<PublishLoadScreen> {
   String _payer = 'REMITTENT';
   final _instructionsController = TextEditingController();
 
-  final List<String> _payers = ['REMITTENT', 'DESTINATARY', 'SPLIT'];
 
   @override
   void dispose() {
@@ -91,7 +91,7 @@ class _PublishLoadScreenState extends ConsumerState<PublishLoadScreen> {
     });
 
     final authState = ref.read(authControllerProvider);
-    final token = authState.user?.accessToken;
+    final token = authState.accessToken;
     if (token == null) {
       setState(() {
         _isSubmitting = false;
@@ -149,12 +149,9 @@ class _PublishLoadScreenState extends ConsumerState<PublishLoadScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Publicar Nueva Carga'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/dashboard'),
-        ),
+      appBar: const AppNavBar(
+        currentSection: AppNavSection.publishLoad,
+        title: 'Publicar Carga',
       ),
       body: Center(
         child: ConstrainedBox(
@@ -365,19 +362,35 @@ class _PublishLoadScreenState extends ConsumerState<PublishLoadScreen> {
           Row(
             children: [
               Expanded(
-                child: RadioListTile<String>(
-                  title: const Text('Valor ofrecido'),
-                  value: 'OFFERED',
-                  groupValue: _pricingType,
-                  onChanged: (val) => setState(() => _pricingType = val!),
+                child: InkWell(
+                  onTap: () => setState(() => _pricingType = 'OFFERED'),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Row(
+                    children: [
+                      Radio<String>(
+                        value: 'OFFERED',
+                        groupValue: _pricingType,
+                        onChanged: (val) => setState(() => _pricingType = val!),
+                      ),
+                      const Expanded(child: Text('Valor ofrecido')),
+                    ],
+                  ),
                 ),
               ),
               Expanded(
-                child: RadioListTile<String>(
-                  title: const Text('A convenir / Cotización'),
-                  value: 'QUOTE_REQUEST',
-                  groupValue: _pricingType,
-                  onChanged: (val) => setState(() => _pricingType = val!),
+                child: InkWell(
+                  onTap: () => setState(() => _pricingType = 'QUOTE_REQUEST'),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Row(
+                    children: [
+                      Radio<String>(
+                        value: 'QUOTE_REQUEST',
+                        groupValue: _pricingType,
+                        onChanged: (val) => setState(() => _pricingType = val!),
+                      ),
+                      const Expanded(child: Text('A convenir / Cotización')),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -434,7 +447,7 @@ class _PublishLoadScreenState extends ConsumerState<PublishLoadScreen> {
             ),
           Card(
             elevation: 0,
-            color: Theme.of(context).colorScheme.surfaceVariant,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(

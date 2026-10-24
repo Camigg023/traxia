@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../loads/bids_trips_models.dart';
 import '../loads/load_api.dart';
 import '../loads/load_models.dart';
 import '../loads/trips_api.dart';
 import '../state/app_providers.dart';
+import '../widgets/app_nav_bar.dart';
 
 class LoadsScreen extends ConsumerStatefulWidget {
   const LoadsScreen({super.key});
@@ -71,13 +71,10 @@ class _LoadsScreenState extends ConsumerState<LoadsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cargas y Viajes Disponibles'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/dashboard'),
-        ),
-        actions: [
+      appBar: AppNavBar(
+        currentSection: AppNavSection.loads,
+        title: 'Cargas Disponibles',
+        extraActions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _fetchLoads,
@@ -319,7 +316,7 @@ class _SimulationAndBidDialogState extends ConsumerState<_SimulationAndBidDialog
     }
 
     final auth = ref.read(authControllerProvider);
-    final token = auth.user?.accessToken;
+    final token = auth.accessToken;
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Inicia sesión para enviar tu postulación.'), backgroundColor: Colors.red),
@@ -346,9 +343,10 @@ class _SimulationAndBidDialogState extends ConsumerState<_SimulationAndBidDialog
         );
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isSubmittingBid = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al enviar oferta: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text('Error al enviar oferta: \$e'), backgroundColor: Colors.red),
       );
     }
   }
@@ -374,7 +372,7 @@ class _SimulationAndBidDialogState extends ConsumerState<_SimulationAndBidDialog
                 Text(_simError!, style: const TextStyle(color: Colors.red))
               else if (_simulation != null) ...[
                 Card(
-                  color: Theme.of(context).colorScheme.surfaceVariant,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(

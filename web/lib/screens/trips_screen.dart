@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../loads/bids_trips_models.dart';
 import '../loads/trips_api.dart';
 import '../state/app_providers.dart';
+import '../widgets/app_nav_bar.dart';
 
 class TripsScreen extends ConsumerStatefulWidget {
   const TripsScreen({super.key});
@@ -30,7 +31,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     });
 
     final auth = ref.read(authControllerProvider);
-    final token = auth.user?.accessToken;
+    final token = auth.accessToken;
     if (token == null) {
       setState(() {
         _isLoading = false;
@@ -42,11 +43,13 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     try {
       final api = TripsApi.fromEnvironment();
       final results = await api.getMyTrips(accessToken: token);
+      if (!mounted) return;
       setState(() {
         _trips = results;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _error = 'Error al cargar viajes: $e';
@@ -56,17 +59,19 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
 
   Future<void> _startTrip(TripModel trip) async {
     final auth = ref.read(authControllerProvider);
-    final token = auth.user?.accessToken;
+    final token = auth.accessToken;
     if (token == null) return;
 
     try {
       final api = TripsApi.fromEnvironment();
       await api.startTrip(tripId: trip.id, accessToken: token);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('¡Viaje iniciado! Estado: EN TRÁNSITO.'), backgroundColor: Colors.blue),
       );
       _fetchTrips();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
@@ -105,7 +110,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
 
     if (confirmed == true && mounted) {
       final auth = ref.read(authControllerProvider);
-      final token = auth.user?.accessToken;
+      final token = auth.accessToken;
       if (token == null) return;
 
       try {
@@ -115,11 +120,13 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
           proofNotes: notesController.text.trim(),
           accessToken: token,
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('¡Carga entregada y finalizada con éxito!'), backgroundColor: Colors.green),
         );
         _fetchTrips();
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
@@ -130,13 +137,10 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mis Viajes y Operaciones'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/dashboard'),
-        ),
-        actions: [
+      appBar: AppNavBar(
+        currentSection: AppNavSection.trips,
+        title: 'Mis Viajes',
+        extraActions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _fetchTrips,

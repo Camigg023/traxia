@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../state/app_providers.dart';
-import '../widgets/theme_mode_toggle.dart';
+import '../widgets/app_nav_bar.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -24,24 +24,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
 
     final isAdmin = user.roles.contains('ADMIN');
-    final title = isAdmin ? 'Panel de administración' : 'Tu espacio TRAXIA';
     final wide = MediaQuery.sizeOf(context).width >= 850;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-        actions: [
-          const ThemeModeToggle(),
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Tooltip(
-              message: user.email,
-              child: CircleAvatar(
-                child: Text(user.email.substring(0, 1).toUpperCase()),
-              ),
-            ),
-          ),
-        ],
+      appBar: const AppNavBar(
+        currentSection: AppNavSection.dashboard,
       ),
       body: Row(
         children: [
@@ -62,20 +49,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   selectedIcon: Icon(Icons.person),
                   label: Text('Mi cuenta'),
                 ),
-              ],
-              trailing: Expanded(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: IconButton(
-                      tooltip: 'Cerrar sesión',
-                      onPressed: auth.isSubmitting ? null : _signOut,
-                      icon: const Icon(Icons.logout),
-                    ),
-                  ),
-                ),
-              ),
+              ]
             ),
           Expanded(
             child: _selectedSection == 0
@@ -100,30 +74,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   label: 'Mi cuenta',
                 ),
               ],
-            ),
-      floatingActionButton: wide
-          ? null
-          : FloatingActionButton.small(
-              tooltip: 'Cerrar sesión',
-              onPressed: auth.isSubmitting ? null : _signOut,
-              child: const Icon(Icons.logout),
-            ),
+            )
     );
   }
-
-  Future<void> _signOut() async {
-    final signedOut = await ref.read(authControllerProvider).signOut();
-    if (!signedOut && mounted) {
-      final message = ref.read(authControllerProvider).message;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message ?? 'No fue posible cerrar la sesión.')),
-      );
-    }
-    if (signedOut && mounted) {
-      context.go('/iniciar-sesion');
-    }
-  }
 }
+
 
 class _Overview extends StatelessWidget {
   const _Overview({required this.isAdmin, required this.email});

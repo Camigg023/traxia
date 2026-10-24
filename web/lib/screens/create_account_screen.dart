@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../auth/auth_api.dart';
 import '../state/app_providers.dart';
 import '../widgets/theme_mode_toggle.dart';
 
