@@ -86,6 +86,9 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/loads").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/loads/{id:[0-9a-fA-F-]+}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/loads/{id:[0-9a-fA-F-]+}/simulate").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)));

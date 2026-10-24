@@ -1,0 +1,40 @@
+CREATE TABLE bids (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    public_id BINARY(16) NOT NULL,
+    load_id BIGINT NOT NULL,
+    bidder_user_id BIGINT NOT NULL,
+    offered_amount DECIMAL(12,2) NOT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+    proposed_pickup_date_utc DATETIME(6) NULL,
+    notes TEXT NULL,
+    created_at_utc DATETIME(6) NOT NULL,
+    updated_at_utc DATETIME(6) NOT NULL,
+    CONSTRAINT uk_bids_public_id UNIQUE (public_id),
+    CONSTRAINT fk_bids_load FOREIGN KEY (load_id) REFERENCES loads (id),
+    CONSTRAINT fk_bids_bidder FOREIGN KEY (bidder_user_id) REFERENCES users (id),
+    INDEX idx_bids_load (load_id),
+    INDEX idx_bids_bidder (bidder_user_id),
+    INDEX idx_bids_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE trips (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    public_id BINARY(16) NOT NULL,
+    load_id BIGINT NOT NULL,
+    bid_id BIGINT NULL,
+    driver_user_id BIGINT NOT NULL,
+    agreed_amount DECIMAL(12,2) NOT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'ASSIGNED',
+    started_at_utc DATETIME(6) NULL,
+    delivered_at_utc DATETIME(6) NULL,
+    delivery_proof_notes TEXT NULL,
+    created_at_utc DATETIME(6) NOT NULL,
+    updated_at_utc DATETIME(6) NOT NULL,
+    CONSTRAINT uk_trips_public_id UNIQUE (public_id),
+    CONSTRAINT uk_trips_load UNIQUE (load_id),
+    CONSTRAINT fk_trips_load FOREIGN KEY (load_id) REFERENCES loads (id),
+    CONSTRAINT fk_trips_bid FOREIGN KEY (bid_id) REFERENCES bids (id),
+    CONSTRAINT fk_trips_driver FOREIGN KEY (driver_user_id) REFERENCES users (id),
+    INDEX idx_trips_driver (driver_user_id),
+    INDEX idx_trips_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

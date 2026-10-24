@@ -7,7 +7,10 @@ import 'package:go_router/go_router.dart';
 import 'auth/auth_controller.dart';
 import 'screens/create_account_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/loads_screen.dart';
+import 'screens/publish_load_screen.dart';
 import 'screens/sign_in_screen.dart';
+import 'screens/trips_screen.dart';
 import 'screens/verify_email_screen.dart';
 import 'state/app_providers.dart';
 import 'theme/app_theme.dart';
@@ -36,13 +39,23 @@ class _TraxiaAppState extends ConsumerState<TraxiaApp> {
         if (_authController.status == AuthStatus.restoring) {
           return null;
         }
+
+        final authOnlyPaths = [
+          '/panel',
+          '/publicar-carga',
+          '/publish-load',
+          '/viajes',
+          '/trips',
+        ];
+        final unauthOnlyPaths = ['/iniciar-sesion', '/crear-cuenta'];
+
         if (path == '/') {
           return isSignedIn ? '/panel' : '/iniciar-sesion';
         }
-        if (isSignedIn && path != '/panel') {
+        if (isSignedIn && unauthOnlyPaths.contains(path)) {
           return '/panel';
         }
-        if (!isSignedIn && path == '/panel') {
+        if (!isSignedIn && authOnlyPaths.contains(path)) {
           return '/iniciar-sesion';
         }
         return null;
@@ -70,6 +83,34 @@ class _TraxiaAppState extends ConsumerState<TraxiaApp> {
         GoRoute(
           path: '/panel',
           builder: (context, state) => const DashboardScreen(),
+        ),
+        GoRoute(
+          path: '/dashboard',
+          builder: (context, state) => const DashboardScreen(),
+        ),
+        GoRoute(
+          path: '/publicar-carga',
+          builder: (context, state) => const PublishLoadScreen(),
+        ),
+        GoRoute(
+          path: '/publish-load',
+          builder: (context, state) => const PublishLoadScreen(),
+        ),
+        GoRoute(
+          path: '/cargas',
+          builder: (context, state) => const LoadsScreen(),
+        ),
+        GoRoute(
+          path: '/loads',
+          builder: (context, state) => const LoadsScreen(),
+        ),
+        GoRoute(
+          path: '/viajes',
+          builder: (context, state) => const TripsScreen(),
+        ),
+        GoRoute(
+          path: '/trips',
+          builder: (context, state) => const TripsScreen(),
         ),
       ],
     );

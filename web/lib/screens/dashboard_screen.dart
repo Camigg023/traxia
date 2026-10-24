@@ -196,7 +196,156 @@ class _Overview extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
+              Text(
+                'Módulos de Carga y Transporte',
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isSmall = constraints.maxWidth < 600;
+                  return Wrap(
+                    spacing: 16,
+                    runSpacing: 16,
+                    children: [
+                      SizedBox(
+                        width: isSmall ? constraints.maxWidth : 320,
+                        child: Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundColor: theme.colorScheme.primaryContainer,
+                                      child: Icon(Icons.add_road, color: theme.colorScheme.primary),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      'Publicar Carga',
+                                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Registra una nueva carga en 5 pasos (origen, destino, carrocería, fechas y condiciones).',
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                                const SizedBox(height: 16),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: FilledButton.icon(
+                                    onPressed: () => context.push('/publicar-carga'),
+                                    icon: const Icon(Icons.arrow_forward, size: 18),
+                                    label: const Text('Nueva Carga'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: isSmall ? constraints.maxWidth : 320,
+                        child: Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundColor: theme.colorScheme.secondaryContainer,
+                                      child: Icon(Icons.local_shipping_outlined, color: theme.colorScheme.secondary),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      'Cargas Disponibles',
+                                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Explora fletes activos en Colombia y simula costos de ruta con el Gemelo Digital.',
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                                const SizedBox(height: 16),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => context.push('/cargas'),
+                                    icon: const Icon(Icons.search, size: 18),
+                                    label: const Text('Ver Cartelera'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: isSmall ? constraints.maxWidth : 320,
+                        child: Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundColor: theme.colorScheme.tertiaryContainer,
+                                      child: Icon(Icons.route, color: theme.colorScheme.tertiary),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      'Mis Viajes',
+                                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Monitorea y ejecuta viajes asignados: cambia a en tránsito y confirma entrega.',
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                                const SizedBox(height: 16),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => context.push('/viajes'),
+                                    icon: const Icon(Icons.playlist_play, size: 18),
+                                    label: const Text('Ver Mis Viajes'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 28),
               Text('Estado de la plataforma', style: theme.textTheme.titleLarge),
               const SizedBox(height: 12),
               Wrap(
