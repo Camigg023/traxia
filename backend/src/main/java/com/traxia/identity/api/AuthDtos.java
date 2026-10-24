@@ -14,6 +14,9 @@ public final class AuthDtos {
     private AuthDtos() {
     }
 
+    public record GoogleLoginRequest(@NotBlank String idToken) {
+    }
+
     public record LoginRequest(
             @NotBlank @Email @Size(max = 254) String email,
             @NotBlank @Size(max = 72) String password) {

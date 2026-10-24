@@ -78,6 +78,24 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+
+  Future<bool> signInWithGoogle({required String idToken}) async {
+    isSubmitting = true;
+    message = null;
+    notifyListeners();
+    try {
+      final response = await _api.googleSignIn(idToken: idToken);
+      _setAuthenticated(response.accessToken, response.user);
+      return true;
+    } on Exception catch (_) {
+      message = 'No fue posible iniciar sesion con Google. Intenta de nuevo.';
+      return false;
+    } finally {
+      isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
   void clearMessage() {
     message = null;
     notifyListeners();

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../auth/google_auth_client.dart';
 import '../state/app_providers.dart';
 import '../widgets/theme_mode_toggle.dart';
 
@@ -37,6 +38,14 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     if (authenticated && mounted) {
       context.go('/panel');
     }
+  }
+
+
+  Future<void> _signInWithGoogle() async {
+    final idToken = await GoogleAuthClient.signIn();
+    if (idToken == null) return;
+    final ok = await ref.read(authControllerProvider).signInWithGoogle(idToken: idToken);
+    if (ok && mounted) context.go('/panel');
   }
 
   @override
@@ -117,6 +126,26 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Text('Iniciar sesión'),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Expanded(child: Divider()),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('o', style: Theme.of(context).textTheme.bodySmall),
+                      ),
+                      const Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: auth.isSubmitting ? null : _signInWithGoogle,
+                    icon: const _GoogleLogo(),
+                    label: const Text('Continuar con Google'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Row(
@@ -301,6 +330,31 @@ class _MessageBanner extends StatelessWidget {
       child: Text(
         message,
         style: TextStyle(color: scheme.onErrorContainer),
+      ),
+    );
+  }
+}
+
+class _GoogleLogo extends StatelessWidget {
+  const _GoogleLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 22,
+      height: 22,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.grey.shade300, width: 1),
+      ),
+      child: const Text(
+        'G',
+        style: TextStyle(
+          color: Color(0xFF4285F4),
+          fontWeight: FontWeight.w900,
+          fontSize: 15,
+        ),
       ),
     );
   }

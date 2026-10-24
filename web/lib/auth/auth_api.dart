@@ -99,6 +99,17 @@ class AuthApi {
     );
   }
 
+
+
+  /// Intercambia el ID Token de Google por una sesion TRAXIA propia.
+  Future<AuthResponse> googleSignIn({required String idToken}) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '$_authPath/google',
+      data: {'idToken': idToken},
+    );
+    return AuthResponse.fromJson(_requiredBody(response.data));
+  }
+
   String messageFor(DioException exception) {
     final responseData = exception.response?.data;
     if (responseData is Map<String, dynamic>) {

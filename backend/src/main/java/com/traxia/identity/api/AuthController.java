@@ -1,5 +1,8 @@
 package com.traxia.identity.api;
 
+import com.traxia.identity.application.GoogleAuthService;
+import com.traxia.identity.api.AuthDtos.GoogleLoginRequest;
+
 import com.traxia.identity.application.AuthService;
 import com.traxia.identity.application.AuthService.AuthResult;
 import com.traxia.identity.application.RegistrationService;
@@ -32,6 +35,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final RegistrationService registrationService;
+    private final GoogleAuthService googleAuthService;
     private final String cookieName;
     private final boolean cookieSecure;
     private static final Set<String> NON_PRODUCTION_ENVIRONMENTS =
@@ -40,6 +44,7 @@ public class AuthController {
     public AuthController(
             AuthService authService,
             RegistrationService registrationService,
+            GoogleAuthService googleAuthService,
             @Value("${traxia.security.refresh.cookie-name}") String cookieName,
             @Value("${traxia.security.refresh.cookie-secure}") boolean cookieSecure,
             @Value("${APP_ENV:local}") String appEnvironment) {
@@ -53,6 +58,7 @@ public class AuthController {
         }
         this.authService = authService;
         this.registrationService = registrationService;
+        this.googleAuthService = googleAuthService;
         this.cookieName = cookieName;
         this.cookieSecure = cookieSecure;
     }
@@ -69,6 +75,12 @@ public class AuthController {
     public VerifyEmailResponse verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
         registrationService.verifyEmail(request.token());
         return new VerifyEmailResponse("Correo verificado. Ya puedes iniciar sesión.");
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<AuthDtos.AuthResponse> googleLogin(
+            @Valid @RequestBody GoogleLoginRequest request) {
+        return authResponse(googleAuthService.authenticate(request.idToken()));
     }
 
     @PostMapping("/login")

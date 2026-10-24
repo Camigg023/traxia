@@ -51,6 +51,19 @@ public class AuthMethodEntity {
     protected AuthMethodEntity() {
     }
 
+    public static AuthMethodEntity googleMethod(
+            UserEntity user, String googleSubject, Instant now) {
+        AuthMethodEntity method = new AuthMethodEntity();
+        method.publicId = java.util.UUID.randomUUID();
+        method.user = user;
+        method.providerCode = "GOOGLE";
+        method.providerSubject = googleSubject;
+        method.status = "ACTIVE";
+        method.verifiedAtUtc = now;
+        method.createdAtUtc = now;
+        return method;
+    }
+
     public static AuthMethodEntity emailPassword(
             UserEntity user, String passwordHash, Instant now) {
         return emailPassword(user, passwordHash, now, "ACTIVE");

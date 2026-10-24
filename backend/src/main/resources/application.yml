@@ -82,6 +82,8 @@ traxia:
       cleanup-delay-millis: ${LOGIN_LIMIT_CLEANUP_DELAY_MILLIS:3600000}
   web:
     allowed-origins: ${WEB_ALLOWED_ORIGINS:http://localhost:5000,http://localhost:3000}
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
 
 logging:
   level:

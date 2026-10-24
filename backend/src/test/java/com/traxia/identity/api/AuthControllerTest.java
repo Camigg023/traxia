@@ -14,7 +14,7 @@ class AuthControllerTest {
     void rejectsInsecureRefreshCookieOutsideLocalAndTestEnvironments() {
         assertThatIllegalStateException().isThrownBy(() ->
                 new AuthController(
-                        null, null,
+                        null, null, null,
                         "TRAXIA_REFRESH",
                         false,
                         "production"))
@@ -25,7 +25,7 @@ class AuthControllerTest {
     void permitsInsecureRefreshCookieInLocalDevelopment() {
         assertThatCode(() ->
                 new AuthController(
-                        null, null,
+                        null, null, null,
                         "TRAXIA_REFRESH",
                         false,
                         "local"))
