@@ -1,0 +1,89 @@
+spring:
+  config:
+    import: optional:file:../.env.local[.properties]
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+  application:
+    name: traxia-backend
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:traxia}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+    username: ${MYSQL_USER:traxia}
+    password: ${MYSQL_PASSWORD:}
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 5000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  jackson:
+    time-zone: UTC
+  mvc:
+    problemdetails:
+      enabled: true
+
+server:
+  port: ${APP_PORT:8080}
+  forward-headers-strategy: none
+  error:
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+traxia:
+  registration:
+    enabled: ${TRAXIA_REGISTRATION_ENABLED:false}
+    test-notice-version: ${TRAXIA_TEST_NOTICE_VERSION:local-testing-1}
+    verification-url: ${TRAXIA_WEB_BASE_URL:http://localhost:5000}/verificar-correo
+    verification-ttl-minutes: 30
+    email-from: ${MAIL_FROM:noreply@traxia.local}
+  security:
+    jwt:
+      secret-base64: ${JWT_SIGNING_SECRET_BASE64:}
+      issuer: ${JWT_ISSUER:traxia-api}
+      audience: ${JWT_AUDIENCE:traxia-web}
+      access-ttl-seconds: ${JWT_ACCESS_TTL_SECONDS:600}
+    refresh:
+      ttl-seconds: ${JWT_REFRESH_TTL_SECONDS:604800}
+      cookie-secure: ${REFRESH_COOKIE_SECURE:false}
+      cookie-name: TRAXIA_REFRESH
+    password:
+      bcrypt-strength: ${BCRYPT_STRENGTH:12}
+    login-limit:
+      hashing-secret-base64: ${AUTH_RATE_LIMIT_HMAC_SECRET_BASE64:}
+      account-failures: ${LOGIN_LIMIT_ACCOUNT_FAILURES:5}
+      address-failures: ${LOGIN_LIMIT_ADDRESS_FAILURES:30}
+      window-seconds: ${LOGIN_LIMIT_WINDOW_SECONDS:900}
+      block-seconds: ${LOGIN_LIMIT_BLOCK_SECONDS:900}
+      cleanup-delay-millis: ${LOGIN_LIMIT_CLEANUP_DELAY_MILLIS:3600000}
+  web:
+    allowed-origins: ${WEB_ALLOWED_ORIGINS:http://localhost:5000,http://localhost:3000}
+
+logging:
+  level:
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN

@@ -1,0 +1,9 @@
+{
+  "name": "TRAXIA",
+  "short_name": "TRAXIA",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f4f7f8",
+  "theme_color": "#087f8c",
+  "description": "Plataforma web para conectar empresas y transporte."
+}
