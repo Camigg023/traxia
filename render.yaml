@@ -12,15 +12,17 @@ services:
       - key: APP_PORT
         value: 8080
       - key: MYSQL_HOST
-        sync: false
+        value: gateway01.us-east-1.prod.aws.tidbcloud.com
       - key: MYSQL_PORT
-        value: 4000
+        value: "4000"
       - key: MYSQL_DATABASE
-        sync: false
+        value: test
       - key: MYSQL_USER
-        sync: false
+        value: 3oPhPmpWZYLdVCW.root
       - key: MYSQL_PASSWORD
         sync: false
+      - key: MYSQL_SSL_MODE
+        value: REQUIRED
       - key: JWT_SIGNING_SECRET_BASE64
         value: lwVbz94PepMyYWcrtNf+d271n7d0DyEvgk3l5ChhZrs=
       - key: AUTH_RATE_LIMIT_HMAC_SECRET_BASE64
@@ -28,8 +30,8 @@ services:
       - key: GOOGLE_CLIENT_ID
         value: 889356702185-0pqo4fj9gmp5tqqcltdli9ketkvep2me.apps.googleusercontent.com
       - key: WEB_ALLOWED_ORIGINS
-        sync: false
+        value: "http://localhost:5000,https://*.vercel.app"
       - key: REFRESH_COOKIE_SECURE
-        value: "true"
+        value: "false"
       - key: TRAXIA_REGISTRATION_ENABLED
         value: "true"

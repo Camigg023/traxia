@@ -15,7 +15,7 @@ spring:
   application:
     name: traxia-backend
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:traxia}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:traxia}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&sslMode=${MYSQL_SSL_MODE:PREFERRED}
     username: ${MYSQL_USER:traxia}
     password: ${MYSQL_PASSWORD:}
     hikari:
