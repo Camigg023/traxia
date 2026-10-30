@@ -4,6 +4,13 @@ import 'package:dio/dio.dart';
 
 import 'auth_models.dart';
 
+/// Excepción que indica que el correo de Google no tiene cuenta en TRAXIA.
+/// El frontend debe redirigir al flujo de registro con selección de perfil.
+class GoogleUserNotFoundException implements Exception {
+  const GoogleUserNotFoundException({required this.email});
+  final String email;
+}
+
 class AuthApi {
   AuthApi(this._dio);
 
@@ -99,13 +106,38 @@ class AuthApi {
     );
   }
 
-
-
-  /// Intercambia el ID Token de Google por una sesion TRAXIA propia.
+  /// Intenta iniciar sesión con Google.
+  /// Si el correo no tiene cuenta en TRAXIA lanza [GoogleUserNotFoundException].
   Future<AuthResponse> googleSignIn({required String idToken}) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '$_authPath/google',
+        data: {'idToken': idToken},
+      );
+      return AuthResponse.fromJson(_requiredBody(response.data));
+    } on DioException catch (e) {
+      // El backend devuelve 404 con errorCode=GOOGLE_USER_NOT_FOUND
+      if (e.response?.statusCode == 404) {
+        final data = e.response?.data;
+        if (data is Map<String, dynamic> &&
+            data['errorCode'] == 'GOOGLE_USER_NOT_FOUND') {
+          final email = (data['email'] as String?) ?? '';
+          throw GoogleUserNotFoundException(email: email);
+        }
+      }
+      rethrow;
+    }
+  }
+
+  /// Registra un usuario nuevo mediante Google con el perfil seleccionado.
+  /// Llama a este método solo cuando [googleSignIn] lanzó [GoogleUserNotFoundException].
+  Future<AuthResponse> googleRegister({
+    required String idToken,
+    required String profile,
+  }) async {
     final response = await _dio.post<Map<String, dynamic>>(
-      '$_authPath/google',
-      data: {'idToken': idToken},
+      '$_authPath/google/register',
+      data: {'idToken': idToken, 'profile': profile},
     );
     return AuthResponse.fromJson(_requiredBody(response.data));
   }

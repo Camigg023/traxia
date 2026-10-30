@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../auth/google_auth_client.dart';
+import '../auth/auth_controller.dart';
 import '../state/app_providers.dart';
 import '../theme/app_colors.dart';
 import '../widgets/theme_mode_toggle.dart';
@@ -45,8 +46,18 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   Future<void> _signInWithGoogle() async {
     final idToken = await GoogleAuthClient.signIn();
     if (idToken == null) return;
-    final ok = await ref.read(authControllerProvider).signInWithGoogle(idToken: idToken);
-    if (ok && mounted) context.go('/panel');
+    final result = await ref.read(authControllerProvider).signInWithGoogle(idToken: idToken);
+    if (!mounted) return;
+    switch (result) {
+      case GoogleSignInResult.success:
+        context.go('/panel');
+      case GoogleSignInResult.notRegistered:
+        // El correo de Google no está registrado: ir a crear cuenta con el idToken
+        context.go('/crear-cuenta', extra: idToken);
+      case GoogleSignInResult.error:
+        // El mensaje de error ya está en authControllerProvider.message
+        break;
+    }
   }
 
   @override

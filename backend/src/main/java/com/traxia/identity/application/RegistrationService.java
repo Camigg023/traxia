@@ -29,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class RegistrationService {
 
     private static final Set<String> ALLOWED_ENVIRONMENTS =
-            Set.of("local", "development", "dev", "test");
+            Set.of("local", "development", "dev", "test", "production");
     private static final Set<String> ALLOWED_PROFILES =
             Set.of("SHIPPER", "DRIVER", "LEGALIZER");
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -75,7 +75,7 @@ public class RegistrationService {
 
     @Transactional
     public void register(RegisterRequest request) {
-        requireLocalRegistration();
+        requireRegistrationEnabled();
         String email = TraxiaUserDetailsService.normalizeEmail(request.email());
         String profile = request.profile().trim().toUpperCase(Locale.ROOT);
         String displayName = request.displayName().trim();
@@ -110,7 +110,7 @@ public class RegistrationService {
 
     @Transactional
     public void verifyEmail(String rawToken) {
-        requireLocalRegistration();
+        requireRegistrationEnabled();
         if (rawToken == null || !rawToken.matches("[A-Za-z0-9_-]{43}")) {
             throw new InvalidVerificationTokenException();
         }
@@ -135,7 +135,7 @@ public class RegistrationService {
         auditService.record(user, "AUTH_EMAIL_VERIFIED", "USER", user.getPublicId(), "SUCCESS");
     }
 
-    private void requireLocalRegistration() {
+    private void requireRegistrationEnabled() {
         if (!registrationEnabled || !ALLOWED_ENVIRONMENTS.contains(appEnvironment)) {
             throw new RegistrationDisabledException();
         }

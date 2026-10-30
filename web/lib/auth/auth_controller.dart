@@ -6,6 +6,9 @@ import 'auth_models.dart';
 
 enum AuthStatus { restoring, signedOut, signedIn, unavailable }
 
+/// Resultado del intento de login con Google.
+enum GoogleSignInResult { success, notRegistered, error }
+
 class AuthController extends ChangeNotifier {
   AuthController(this._api);
 
@@ -78,17 +81,52 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-
-  Future<bool> signInWithGoogle({required String idToken}) async {
+  /// Intenta iniciar sesión con Google.
+  ///
+  /// Devuelve [GoogleSignInResult.success] si se autenticó correctamente.
+  /// Devuelve [GoogleSignInResult.notRegistered] si el correo de Google no
+  /// tiene cuenta en TRAXIA (el frontend debe redirigir a registro).
+  /// Devuelve [GoogleSignInResult.error] ante cualquier otro fallo.
+  Future<GoogleSignInResult> signInWithGoogle({required String idToken}) async {
     isSubmitting = true;
     message = null;
     notifyListeners();
     try {
       final response = await _api.googleSignIn(idToken: idToken);
       _setAuthenticated(response.accessToken, response.user);
-      return true;
+      return GoogleSignInResult.success;
+    } on GoogleUserNotFoundException {
+      // El correo no está registrado → el frontend debe redirigir al registro
+      return GoogleSignInResult.notRegistered;
     } on Exception catch (_) {
-      message = 'No fue posible iniciar sesion con Google. Intenta de nuevo.';
+      message = 'No fue posible iniciar sesión con Google. Inténtalo de nuevo.';
+      return GoogleSignInResult.error;
+    } finally {
+      isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  /// Registra un nuevo usuario con Google y el perfil elegido.
+  Future<bool> registerWithGoogle({
+    required String idToken,
+    required String profile,
+  }) async {
+    isSubmitting = true;
+    message = null;
+    notifyListeners();
+    try {
+      final response = await _api.googleRegister(
+        idToken: idToken,
+        profile: profile,
+      );
+      _setAuthenticated(response.accessToken, response.user);
+      return true;
+    } on DioException catch (e) {
+      message = _api.messageFor(e);
+      return false;
+    } on Exception catch (_) {
+      message = 'No fue posible completar el registro con Google. Inténtalo de nuevo.';
       return false;
     } finally {
       isSubmitting = false;

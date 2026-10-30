@@ -65,4 +65,20 @@ public final class AuthDtos {
 
     public record ApiProblem(String title, int status, String detail) {
     }
+
+    /**
+     * Respuesta cuando el usuario de Google no tiene cuenta en TRAXIA.
+     * El frontend debe redirigir al flujo de selección de perfil.
+     */
+    public record GoogleUserNotFoundResponse(
+            String errorCode,
+            String message,
+            String email) {
+    }
+
+    /** Registro de un usuario nuevo mediante Google (elige perfil en el frontend). */
+    public record GoogleRegisterRequest(
+            @NotBlank String idToken,
+            @NotBlank @Pattern(regexp = "SHIPPER|DRIVER|LEGALIZER") String profile) {
+    }
 }

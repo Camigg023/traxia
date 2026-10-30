@@ -72,7 +72,9 @@ class _TraxiaAppState extends ConsumerState<TraxiaApp> {
         ),
         GoRoute(
           path: '/crear-cuenta',
-          builder: (context, state) => const CreateAccountScreen(),
+          builder: (context, state) => CreateAccountScreen(
+            googleIdToken: state.extra as String?,
+          ),
         ),
         GoRoute(
           path: '/verificar-correo',

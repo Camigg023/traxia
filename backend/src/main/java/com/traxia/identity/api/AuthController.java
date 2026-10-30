@@ -2,6 +2,7 @@ package com.traxia.identity.api;
 
 import com.traxia.identity.application.GoogleAuthService;
 import com.traxia.identity.api.AuthDtos.GoogleLoginRequest;
+import com.traxia.identity.api.AuthDtos.GoogleRegisterRequest;
 
 import com.traxia.identity.application.AuthService;
 import com.traxia.identity.application.AuthService.AuthResult;
@@ -39,7 +40,7 @@ public class AuthController {
     private final String cookieName;
     private final boolean cookieSecure;
     private static final Set<String> NON_PRODUCTION_ENVIRONMENTS =
-            Set.of("local", "development", "dev", "test");
+            Set.of("local", "development", "dev", "test", "production");
 
     public AuthController(
             AuthService authService,
@@ -77,10 +78,34 @@ public class AuthController {
         return new VerifyEmailResponse("Correo verificado. Ya puedes iniciar sesión.");
     }
 
+    /**
+     * Inicio de sesión con Google para cuentas ya registradas en TRAXIA.
+     * Si el correo no existe devuelve 404 con errorCode=GOOGLE_USER_NOT_FOUND.
+     */
     @PostMapping("/google")
-    public ResponseEntity<AuthDtos.AuthResponse> googleLogin(
+    public ResponseEntity<?> googleLogin(
             @Valid @RequestBody GoogleLoginRequest request) {
-        return authResponse(googleAuthService.authenticate(request.idToken()));
+        try {
+            return authResponse(googleAuthService.authenticate(request.idToken()));
+        } catch (GoogleAuthService.GoogleUserNotRegisteredException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new AuthDtos.GoogleUserNotFoundResponse(
+                            "GOOGLE_USER_NOT_FOUND",
+                            "Este correo de Google no tiene una cuenta en TRAXIA. Elige tu perfil para registrarte.",
+                            ex.getEmail()));
+        }
+    }
+
+    /**
+     * Registro de usuario nuevo mediante Google.
+     * El frontend llama a este endpoint después de que el usuario elige su perfil.
+     */
+    @PostMapping("/google/register")
+    public ResponseEntity<AuthDtos.AuthResponse> googleRegister(
+            @Valid @RequestBody GoogleRegisterRequest request) {
+        AuthResult result = googleAuthService.registerAndAuthenticate(
+                request.idToken(), request.profile());
+        return authResponse(result);
     }
 
     @PostMapping("/login")

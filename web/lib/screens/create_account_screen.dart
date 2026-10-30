@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../auth/auth_controller.dart';
 import '../state/app_providers.dart';
 import '../theme/app_colors.dart';
 import '../widgets/theme_mode_toggle.dart';
@@ -39,8 +40,16 @@ enum AccountProfile {
   final IconData activeIcon;
 }
 
+/// Pantalla de creación de cuenta.
+///
+/// Si [googleIdToken] no es null, el usuario llegó desde un intento de login
+/// con Google cuyo correo no estaba registrado. En ese caso se omiten los
+/// campos de contraseña y se usa [AuthController.registerWithGoogle].
 class CreateAccountScreen extends ConsumerStatefulWidget {
-  const CreateAccountScreen({super.key});
+  const CreateAccountScreen({super.key, this.googleIdToken});
+
+  /// ID Token de Google cuando el usuario viene del flujo de registro via Google.
+  final String? googleIdToken;
 
   @override
   ConsumerState<CreateAccountScreen> createState() => _CreateAccountScreenState();
@@ -58,6 +67,8 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
   String? _error;
   String? _registeredEmail;
 
+  bool get _isGoogleFlow => widget.googleIdToken != null;
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -68,27 +79,41 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
   }
 
   Future<void> _submit() async {
-    if (_isSubmitting || !_formKey.currentState!.validate()) {
-      return;
-    }
+    if (_isSubmitting || !_formKey.currentState!.validate()) return;
     final profile = _selectedProfile;
-    if (profile == null || !_testNoticeAccepted) {
-      return;
-    }
+    if (profile == null || !_testNoticeAccepted) return;
 
     setState(() {
       _isSubmitting = true;
       _error = null;
     });
+
     try {
-      await ref.read(authApiProvider).register(
-            displayName: _nameController.text,
-            email: _emailController.text,
-            password: _passwordController.text,
-            profile: profile.code,
-          );
-      if (mounted) {
-        setState(() => _registeredEmail = _emailController.text.trim());
+      if (_isGoogleFlow) {
+        // Registro con Google: no necesita contraseña, la cuenta queda activa inmediatamente
+        final ok = await ref.read(authControllerProvider).registerWithGoogle(
+              idToken: widget.googleIdToken!,
+              profile: profile.code,
+            );
+        if (mounted) {
+          if (ok) {
+            context.go('/panel'); // sesión iniciada directamente
+          } else {
+            setState(() => _error = ref.read(authControllerProvider).message ??
+                'No fue posible completar el registro con Google.');
+          }
+        }
+      } else {
+        // Registro tradicional con email y contraseña
+        await ref.read(authApiProvider).register(
+              displayName: _nameController.text,
+              email: _emailController.text,
+              password: _passwordController.text,
+              profile: profile.code,
+            );
+        if (mounted) {
+          setState(() => _registeredEmail = _emailController.text.trim());
+        }
       }
     } on DioException catch (exception) {
       if (mounted) {
@@ -99,9 +124,7 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
         setState(() => _error = 'El servidor devolvió una respuesta no válida.');
       }
     } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -112,7 +135,9 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Crear cuenta en TRAXIA'),
+        title: Text(_isGoogleFlow
+            ? 'Elige tu perfil en TRAXIA'
+            : 'Crear cuenta en TRAXIA'),
         actions: const [
           ThemeModeToggle(),
           SizedBox(width: 16),
@@ -134,11 +159,13 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
                     selectedProfile: _selectedProfile,
                     onProfileChanged: (p) => setState(() => _selectedProfile = p),
                     testNoticeAccepted: _testNoticeAccepted,
-                    onNoticeChanged: (val) => setState(() => _testNoticeAccepted = val ?? false),
+                    onNoticeChanged: (val) =>
+                        setState(() => _testNoticeAccepted = val ?? false),
                     isSubmitting: _isSubmitting,
                     error: _error,
                     onSubmit: _submit,
                     isDark: isDark,
+                    isGoogleFlow: _isGoogleFlow,
                   ),
           ),
         ),
@@ -146,6 +173,10 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Formulario de registro
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _RegistrationForm extends StatelessWidget {
   const _RegistrationForm({
@@ -162,6 +193,7 @@ class _RegistrationForm extends StatelessWidget {
     required this.error,
     required this.onSubmit,
     required this.isDark,
+    required this.isGoogleFlow,
   });
 
   final GlobalKey<FormState> formKey;
@@ -177,6 +209,7 @@ class _RegistrationForm extends StatelessWidget {
   final String? error;
   final VoidCallback onSubmit;
   final bool isDark;
+  final bool isGoogleFlow;
 
   @override
   Widget build(BuildContext context) {
@@ -198,6 +231,48 @@ class _RegistrationForm extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Banner informativo para flujo Google
+            if (isGoogleFlow) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.g_mobiledata_rounded, color: AppColors.primary, size: 28),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Registro con Google',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Tu correo de Google está verificado. Solo elige tu perfil para activar la cuenta.',
+                            style: TextStyle(fontSize: 12.5, color: AppColors.primary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            // Título de selección de perfil
             Text(
               'Selecciona tu perfil de usuario',
               style: theme.textTheme.titleMedium?.copyWith(
@@ -265,7 +340,9 @@ class _RegistrationForm extends StatelessWidget {
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 15,
-                                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                                  color: isDark
+                                      ? AppColors.darkTextPrimary
+                                      : AppColors.lightTextPrimary,
                                 ),
                               ),
                               const SizedBox(height: 3),
@@ -273,7 +350,9 @@ class _RegistrationForm extends StatelessWidget {
                                 profile.description,
                                 style: TextStyle(
                                   fontSize: 12.5,
-                                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                  color: isDark
+                                      ? AppColors.darkTextSecondary
+                                      : AppColors.lightTextSecondary,
                                 ),
                               ),
                             ],
@@ -285,7 +364,9 @@ class _RegistrationForm extends StatelessWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: isSelected ? AppColors.primary : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
                               width: isSelected ? 6 : 2,
                             ),
                           ),
@@ -301,101 +382,102 @@ class _RegistrationForm extends StatelessWidget {
             const Divider(),
             const SizedBox(height: 24),
 
-            // Campos del formulario
-            Text(
-              'Datos personales y de acceso',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-              ),
-            ),
-            const SizedBox(height: 18),
-
-            TextFormField(
-              controller: nameController,
-              enabled: !isSubmitting,
-              textCapitalization: TextCapitalization.words,
-              autofillHints: const [AutofillHints.name],
-              maxLength: 120,
-              decoration: const InputDecoration(
-                labelText: 'Nombre completo o de contacto',
-                prefixIcon: Icon(Icons.person_outline_rounded),
-              ),
-              validator: (value) {
-                final name = value?.trim() ?? '';
-                if (name.length < 2) {
-                  return 'Escribe un nombre de al menos 2 caracteres.';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 14),
-
-            TextFormField(
-              controller: emailController,
-              enabled: !isSubmitting,
-              keyboardType: TextInputType.emailAddress,
-              autofillHints: const [AutofillHints.email],
-              maxLength: 254,
-              decoration: const InputDecoration(
-                labelText: 'Correo electrónico corporativo o personal',
-                prefixIcon: Icon(Icons.mail_outline_rounded),
-              ),
-              validator: (value) {
-                final email = value?.trim() ?? '';
-                if (email.isEmpty || !email.contains('@') || email.length > 254) {
-                  return 'Escribe un correo válido.';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 14),
-
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: passwordController,
-                    enabled: !isSubmitting,
-                    obscureText: true,
-                    autofillHints: const [AutofillHints.newPassword],
-                    decoration: const InputDecoration(
-                      labelText: 'Contraseña',
-                      prefixIcon: Icon(Icons.lock_outline_rounded),
-                    ),
-                    validator: (value) {
-                      final password = value ?? '';
-                      if (password.length < 8) {
-                        return 'Mínimo 8 caracteres.';
-                      }
-                      return null;
-                    },
-                  ),
+            // Campos de datos — se ocultan en flujo Google
+            if (!isGoogleFlow) ...[
+              Text(
+                'Datos personales y de acceso',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: TextFormField(
-                    controller: confirmationController,
-                    enabled: !isSubmitting,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Confirmar contraseña',
-                      prefixIcon: Icon(Icons.check_circle_outline_rounded),
-                    ),
-                    validator: (value) {
-                      if (value != passwordController.text) {
-                        return 'Las contraseñas no coinciden.';
-                      }
-                      return null;
-                    },
-                  ),
+              ),
+              const SizedBox(height: 18),
+
+              TextFormField(
+                controller: nameController,
+                enabled: !isSubmitting,
+                textCapitalization: TextCapitalization.words,
+                autofillHints: const [AutofillHints.name],
+                maxLength: 120,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre completo o de contacto',
+                  prefixIcon: Icon(Icons.person_outline_rounded),
                 ),
-              ],
-            ),
+                validator: (value) {
+                  final name = value?.trim() ?? '';
+                  if (name.length < 2) {
+                    return 'Escribe un nombre de al menos 2 caracteres.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
 
-            const SizedBox(height: 20),
+              TextFormField(
+                controller: emailController,
+                enabled: !isSubmitting,
+                keyboardType: TextInputType.emailAddress,
+                autofillHints: const [AutofillHints.email],
+                maxLength: 254,
+                decoration: const InputDecoration(
+                  labelText: 'Correo electrónico corporativo o personal',
+                  prefixIcon: Icon(Icons.mail_outline_rounded),
+                ),
+                validator: (value) {
+                  final email = value?.trim() ?? '';
+                  if (email.isEmpty || !email.contains('@') || email.length > 254) {
+                    return 'Escribe un correo válido.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
 
-            // Checkbox de aviso y términos
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: passwordController,
+                      enabled: !isSubmitting,
+                      obscureText: true,
+                      autofillHints: const [AutofillHints.newPassword],
+                      decoration: const InputDecoration(
+                        labelText: 'Contraseña',
+                        prefixIcon: Icon(Icons.lock_outline_rounded),
+                      ),
+                      validator: (value) {
+                        final password = value ?? '';
+                        if (password.length < 16) {
+                          return 'Mínimo 16 caracteres.';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: TextFormField(
+                      controller: confirmationController,
+                      enabled: !isSubmitting,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Confirmar contraseña',
+                        prefixIcon: Icon(Icons.check_circle_outline_rounded),
+                      ),
+                      validator: (value) {
+                        if (value != passwordController.text) {
+                          return 'Las contraseñas no coinciden.';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+            ],
+
+            // Checkbox de términos (siempre visible)
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -446,16 +528,19 @@ class _RegistrationForm extends StatelessWidget {
             const SizedBox(height: 28),
 
             FilledButton(
-              onPressed: (isSubmitting || selectedProfile == null || !testNoticeAccepted)
-                  ? null
-                  : onSubmit,
+              onPressed:
+                  (isSubmitting || selectedProfile == null || !testNoticeAccepted)
+                      ? null
+                      : onSubmit,
               child: isSubmitting
                   ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
-                  : const Text('Completar Registro'),
+                  : Text(isGoogleFlow
+                      ? 'Activar cuenta con Google'
+                      : 'Completar Registro'),
             ),
 
             const SizedBox(height: 16),
@@ -471,6 +556,10 @@ class _RegistrationForm extends StatelessWidget {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tarjeta de éxito (solo flujo email)
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _SuccessCard extends StatelessWidget {
   const _SuccessCard({required this.email, required this.isDark});
@@ -500,7 +589,8 @@ class _SuccessCard extends StatelessWidget {
               color: AppColors.successContainer,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.mark_email_read_rounded, color: AppColors.success, size: 36),
+            child: const Icon(Icons.mark_email_read_rounded,
+                color: AppColors.success, size: 36),
           ),
           const SizedBox(height: 24),
           const Text(
