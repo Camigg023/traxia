@@ -12,6 +12,7 @@ RUN mvn clean package -DskipTests -B
 
 # ─── Etapa 2: Imagen de Ejecución Ligera ───
 FROM eclipse-temurin:21-jre-alpine
+RUN apk add --no-cache ca-certificates
 WORKDIR /app
 
 # Copiar el artefacto generado
