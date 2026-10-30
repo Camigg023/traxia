@@ -45,15 +45,9 @@ class GoogleAuthClient {
       if (errorStr.contains('popup_closed_by_user')) {
         return const GoogleAuthResult(wasCancelled: true);
       }
-      if (errorStr.contains('idpiframe_initialization_failed') ||
-          errorStr.contains('origin')) {
-        return const GoogleAuthResult(
-          errorMessage:
-              'El dominio no está autorizado en Google Cloud Console. Agrega https://traxia-one.vercel.app en los Orígenes autorizados.',
-        );
-      }
-      return GoogleAuthResult(
-        errorMessage: 'No fue posible conectar con Google: $e',
+      return const GoogleAuthResult(
+        errorMessage:
+            'Para usar Google debes autorizar https://traxia-one.vercel.app en Google Cloud Console. Por favor ingresa o regístrate con tu correo y contraseña.',
       );
     }
   }

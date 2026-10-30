@@ -428,8 +428,8 @@ class _RegistrationForm extends StatelessWidget {
                       ),
                       validator: (value) {
                         final password = value ?? '';
-                        if (password.length < 16) {
-                          return 'Mínimo 16 caracteres.';
+                        if (password.length < 8) {
+                          return 'Mínimo 8 caracteres.';
                         }
                         return null;
                       },
