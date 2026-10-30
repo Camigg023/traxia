@@ -33,8 +33,6 @@ public class RegistrationService {
     private static final Set<String> ALLOWED_PROFILES =
             Set.of("SHIPPER", "DRIVER", "LEGALIZER");
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-    private static final String REGISTRATION_MESSAGE =
-            "Si el correo puede registrarse, recibirás un enlace de verificación en el correo local de pruebas.";
 
     private final UserRepository userRepository;
     private final AuthMethodRepository authMethodRepository;
@@ -85,7 +83,7 @@ public class RegistrationService {
             throw new InvalidRegistrationException();
         }
         if (userRepository.existsByEmailNormalized(email)) {
-            return;
+            throw new EmailAlreadyRegisteredException();
         }
 
         Instant now = Instant.now();
@@ -95,6 +93,11 @@ public class RegistrationService {
         AuthMethodEntity authMethod = authMethodRepository.save(
                 AuthMethodEntity.pendingEmailPassword(user, passwordHash, now));
         user.getAuthMethods().add(authMethod);
+
+        // Auto-activar cuenta para que el usuario pueda ingresar de inmediato sin bloqueo
+        user.verifyEmail(now);
+        authMethod.verify(now);
+
         noticeRepository.save(new RegistrationNoticeAcceptanceEntity(
                 user, testNoticeVersion, now));
 
@@ -104,8 +107,13 @@ public class RegistrationService {
                 hashToken(rawToken),
                 now.plus(verificationTtlMinutes, ChronoUnit.MINUTES),
                 now));
-        auditService.record(user, "AUTH_REGISTER", "USER", user.getPublicId(), "PENDING_VERIFICATION");
-        emailSender.sendVerification(email, displayName, rawToken);
+        auditService.record(user, "AUTH_REGISTER", "USER", user.getPublicId(), "SUCCESS");
+
+        try {
+            emailSender.sendVerification(email, displayName, rawToken);
+        } catch (Exception ignored) {
+            // Si el servicio SMTP no está configurado, la cuenta ya está activa
+        }
     }
 
     @Transactional
@@ -120,18 +128,12 @@ public class RegistrationService {
                 .filter(candidate -> candidate.getExpiresAtUtc().isAfter(now))
                 .orElseThrow(InvalidVerificationTokenException::new);
         UserEntity user = token.getUser();
-        if (!"PENDING_VERIFICATION".equals(user.getStatus())) {
+        if (!"ACTIVE".equals(user.getStatus()) && !"PENDING_VERIFICATION".equals(user.getStatus())) {
             throw new InvalidVerificationTokenException();
         }
-        AuthMethodEntity emailMethod = user.getAuthMethods().stream()
-                .filter(method -> "EMAIL".equals(method.getProviderCode()))
-                .filter(method -> "PENDING_VERIFICATION".equals(method.getStatus()))
-                .findFirst()
-                .orElseThrow(InvalidVerificationTokenException::new);
 
         token.consume(now);
         user.verifyEmail(now);
-        emailMethod.verify(now);
         auditService.record(user, "AUTH_EMAIL_VERIFIED", "USER", user.getPublicId(), "SUCCESS");
     }
 
@@ -155,6 +157,9 @@ public class RegistrationService {
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 no está disponible.", exception);
         }
+    }
+
+    public static final class EmailAlreadyRegisteredException extends RuntimeException {
     }
 
     public static final class RegistrationDisabledException extends RuntimeException {

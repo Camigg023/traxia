@@ -5,6 +5,7 @@ import com.traxia.identity.application.AuthService.InvalidRefreshTokenException;
 import com.traxia.identity.application.RegistrationService.InvalidRegistrationException;
 import com.traxia.identity.application.RegistrationService.InvalidVerificationTokenException;
 import com.traxia.identity.application.RegistrationService.RegistrationDisabledException;
+import com.traxia.identity.application.RegistrationService.EmailAlreadyRegisteredException;
 import com.traxia.identity.application.RegistrationEmailSender.RegistrationEmailDeliveryException;
 import com.traxia.common.security.LoginAttemptLimiter.LoginRateLimitExceededException;
 import org.springframework.http.HttpStatus;
@@ -47,6 +48,22 @@ public class AuthExceptionHandler {
                 "Revisa el perfil y los requisitos de la contraseña.");
     }
 
+    @ExceptionHandler(EmailAlreadyRegisteredException.class)
+    public ResponseEntity<AuthDtos.ApiProblem> emailAlreadyRegistered() {
+        return problem(
+                HttpStatus.CONFLICT,
+                "Correo ya registrado",
+                "Este correo ya tiene una cuenta en TRAXIA. Inicia sesión directamente.");
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<AuthDtos.ApiProblem> illegalArgument(IllegalArgumentException ex) {
+        return problem(
+                HttpStatus.BAD_REQUEST,
+                "Solicitud no válida",
+                ex.getMessage() != null ? ex.getMessage() : "Parámetros no válidos.");
+    }
+
     @ExceptionHandler(InvalidVerificationTokenException.class)
     public ResponseEntity<AuthDtos.ApiProblem> invalidVerificationToken() {
         return problem(
@@ -60,15 +77,15 @@ public class AuthExceptionHandler {
         return problem(
                 HttpStatus.SERVICE_UNAVAILABLE,
                 "Registro no disponible",
-                "El registro de prueba local no está habilitado en este entorno.");
+                "El registro no está habilitado en este entorno.");
     }
 
     @ExceptionHandler(RegistrationEmailDeliveryException.class)
     public ResponseEntity<AuthDtos.ApiProblem> registrationEmailUnavailable() {
         return problem(
                 HttpStatus.SERVICE_UNAVAILABLE,
-                "Correo de prueba no disponible",
-                "No se pudo enviar el mensaje al servidor local de correo. Inténtalo de nuevo más tarde.");
+                "Servicio de correo no disponible",
+                "No se pudo enviar el correo de verificación. Inténtalo de nuevo más tarde.");
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
