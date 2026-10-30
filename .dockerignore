@@ -1,0 +1,20 @@
+# Git
+.git
+.gitignore
+
+# Frontend Flutter (el backend no lo necesita)
+web/
+
+# Archivos de secretos locales (NUNCA al contenedor)
+.env.local
+.env
+*.env
+
+# Logs y temporales
+*.log
+target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
