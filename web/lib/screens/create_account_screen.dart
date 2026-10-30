@@ -491,16 +491,37 @@ class _RegistrationForm extends StatelessWidget {
                   color: AppColors.errorContainer,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        error!,
-                        style: const TextStyle(color: Color(0xFF991B1B), fontSize: 13),
-                      ),
+                    Row(
+                      children: [
+                        const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            error!,
+                            style: const TextStyle(color: Color(0xFF991B1B), fontSize: 13),
+                          ),
+                        ),
+                      ],
                     ),
+                    if (error!.toLowerCase().contains('inicia sesión') ||
+                        error!.toLowerCase().contains('ya tiene una cuenta')) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: () => context.go('/iniciar-sesion'),
+                          icon: const Icon(Icons.login_rounded, size: 16),
+                          label: const Text('Ir a Iniciar Sesión'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF991B1B),
+                            textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

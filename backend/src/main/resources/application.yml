@@ -86,7 +86,7 @@ traxia:
   web:
     allowed-origins: ${WEB_ALLOWED_ORIGINS:http://localhost:5000,http://localhost:3000}
   google:
-    client-id: ${GOOGLE_CLIENT_ID:}
+    client-id: ${GOOGLE_CLIENT_ID:889356702185-0pqo4fj9gmp5tqqcltdli9ketkvep2me.apps.googleusercontent.com}
 
 logging:
   level:

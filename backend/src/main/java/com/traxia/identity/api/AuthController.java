@@ -68,7 +68,18 @@ public class AuthController {
     public ResponseEntity<AuthDtos.AuthResponse> register(
             @Valid @RequestBody RegisterRequest request,
             HttpServletRequest httpRequest) {
-        registrationService.register(request);
+        try {
+            registrationService.register(request);
+        } catch (RegistrationService.EmailAlreadyRegisteredException ex) {
+            // Si el correo ya estaba registrado previamente, intentamos iniciar sesión con la clave suministrada.
+            // Si coincide, el usuario ingresa inmediatamente sin errores.
+            try {
+                return authResponse(authService.login(
+                        request.email(), request.password(), httpRequest.getRemoteAddr()));
+            } catch (Exception loginEx) {
+                throw ex;
+            }
+        }
         return authResponse(authService.login(
                 request.email(), request.password(), httpRequest.getRemoteAddr()));
     }
