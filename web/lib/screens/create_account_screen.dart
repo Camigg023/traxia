@@ -1,35 +1,49 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../state/app_providers.dart';
+import '../theme/app_colors.dart';
 import '../widgets/theme_mode_toggle.dart';
 
 enum AccountProfile {
   shipper(
     'SHIPPER',
     'Empresa que solicita transporte',
+    'Publica cargas, recibe ofertas y simula costos de flete en tiempo real.',
     Icons.inventory_2_outlined,
+    Icons.inventory_2_rounded,
   ),
-  driver('DRIVER', 'Conductor', Icons.local_shipping_outlined),
-  legalizer('LEGALIZER', 'Empresa legalizadora', Icons.fact_check_outlined);
+  driver(
+    'DRIVER',
+    'Conductor',
+    'Encuentra rutas rentables, envía ofertas y gestiona entregas con GPS.',
+    Icons.local_shipping_outlined,
+    Icons.local_shipping_rounded,
+  ),
+  legalizer(
+    'LEGALIZER',
+    'Empresa legalizadora',
+    'Valida manifiestos, legalizaciones y cumplimiento de normatividad.',
+    Icons.fact_check_outlined,
+    Icons.fact_check_rounded,
+  );
 
-  const AccountProfile(this.code, this.label, this.icon);
+  const AccountProfile(this.code, this.label, this.description, this.icon, this.activeIcon);
 
   final String code;
   final String label;
+  final String description;
   final IconData icon;
+  final IconData activeIcon;
 }
 
 class CreateAccountScreen extends ConsumerStatefulWidget {
   const CreateAccountScreen({super.key});
 
   @override
-  ConsumerState<CreateAccountScreen> createState() =>
-      _CreateAccountScreenState();
+  ConsumerState<CreateAccountScreen> createState() => _CreateAccountScreenState();
 }
 
 class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
@@ -78,13 +92,11 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
       }
     } on DioException catch (exception) {
       if (mounted) {
-        setState(
-            () => _error = ref.read(authApiProvider).messageFor(exception));
+        setState(() => _error = ref.read(authApiProvider).messageFor(exception));
       }
     } on FormatException {
       if (mounted) {
-        setState(
-            () => _error = 'El servidor devolvió una respuesta no válida.');
+        setState(() => _error = 'El servidor devolvió una respuesta no válida.');
       }
     } finally {
       if (mounted) {
@@ -96,262 +108,362 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Crear cuenta'),
-        actions: const [ThemeModeToggle(), SizedBox(width: 12)],
+        title: const Text('Crear cuenta en TRAXIA'),
+        actions: const [
+          ThemeModeToggle(),
+          SizedBox(width: 16),
+        ],
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760),
-            child: _registeredEmail == null
-                ? _buildForm(context, theme)
-                : _buildConfirmation(context, theme, _registeredEmail!),
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: _registeredEmail != null
+                ? _SuccessCard(email: _registeredEmail!, isDark: isDark)
+                : _RegistrationForm(
+                    formKey: _formKey,
+                    nameController: _nameController,
+                    emailController: _emailController,
+                    passwordController: _passwordController,
+                    confirmationController: _confirmationController,
+                    selectedProfile: _selectedProfile,
+                    onProfileChanged: (p) => setState(() => _selectedProfile = p),
+                    testNoticeAccepted: _testNoticeAccepted,
+                    onNoticeChanged: (val) => setState(() => _testNoticeAccepted = val ?? false),
+                    isSubmitting: _isSubmitting,
+                    error: _error,
+                    onSubmit: _submit,
+                    isDark: isDark,
+                  ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildForm(BuildContext context, ThemeData theme) {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Crea tu cuenta de prueba',
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Elige el perfil con el que explorarás TRAXIA.',
-            style: theme.textTheme.bodyLarge,
-          ),
-          const SizedBox(height: 24),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final columns = constraints.maxWidth >= 650 ? 3 : 1;
-              final width =
-                  (constraints.maxWidth - (columns - 1) * 12) / columns;
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: AccountProfile.values
-                    .map(
-                      (profile) => SizedBox(
-                        width: width,
-                        child: _ProfileCard(
-                          profile: profile,
-                          selected: _selectedProfile == profile,
-                          enabled: !_isSubmitting,
-                          onTap: () =>
-                              setState(() => _selectedProfile = profile),
-                        ),
-                      ),
-                    )
-                    .toList(),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          TextFormField(
-            controller: _nameController,
-            enabled: !_isSubmitting,
-            textCapitalization: TextCapitalization.words,
-            autofillHints: const [AutofillHints.name],
-            maxLength: 120,
-            decoration: const InputDecoration(
-              labelText: 'Nombre completo o de contacto',
-              prefixIcon: Icon(Icons.person_outline),
-            ),
-            validator: (value) {
-              final name = value?.trim() ?? '';
-              if (name.length < 2) {
-                return 'Escribe un nombre de al menos 2 caracteres.';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: _emailController,
-            enabled: !_isSubmitting,
-            keyboardType: TextInputType.emailAddress,
-            autofillHints: const [AutofillHints.email],
-            maxLength: 254,
-            decoration: const InputDecoration(
-              labelText: 'Correo electrónico',
-              prefixIcon: Icon(Icons.mail_outline),
-            ),
-            validator: (value) {
-              final email = value?.trim() ?? '';
-              if (email.isEmpty || !email.contains('@') || email.length > 254) {
-                return 'Escribe un correo válido.';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: _passwordController,
-            enabled: !_isSubmitting,
-            obscureText: true,
-            autofillHints: const [AutofillHints.newPassword],
-            maxLength: 72,
-            decoration: const InputDecoration(
-              labelText: 'Contraseña',
-              helperText: 'Usa entre 16 y 72 caracteres.',
-              prefixIcon: Icon(Icons.lock_outline),
-            ),
-            validator: (value) {
-              final password = value ?? '';
-              if (password.runes.length < 16) {
-                return 'La contraseña debe tener al menos 16 caracteres.';
-              }
-              if (utf8.encode(password).length > 72) {
-                return 'La contraseña supera el límite permitido.';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: _confirmationController,
-            enabled: !_isSubmitting,
-            obscureText: true,
-            autofillHints: const [AutofillHints.newPassword],
-            decoration: const InputDecoration(
-              labelText: 'Confirma la contraseña',
-              prefixIcon: Icon(Icons.lock_outline),
-            ),
-            validator: (value) {
-              if (value != _passwordController.text) {
-                return 'Las contraseñas no coinciden.';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          Card(
-            color: theme.colorScheme.tertiaryContainer,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.science_outlined,
-                        color: theme.colorScheme.onTertiaryContainer,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Solo para desarrollo local. Este aviso provisional no son los términos de uso ni la política de privacidad definitivos. Usa datos de prueba; no registres información sensible ni documentos reales.',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onTertiaryContainer,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    value: _testNoticeAccepted,
-                    onChanged: _isSubmitting
-                        ? null
-                        : (accepted) => setState(
-                              () => _testNoticeAccepted = accepted ?? false,
-                            ),
-                    title: const Text(
-                      'Leí y acepto usar este registro provisional solo con datos de prueba.',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 16),
-            _ErrorBanner(message: _error!),
-          ],
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: _isSubmitting ||
-                    _selectedProfile == null ||
-                    !_testNoticeAccepted
-                ? null
-                : _submit,
-            child: _isSubmitting
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Crear cuenta de prueba'),
-          ),
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed:
-                _isSubmitting ? null : () => context.go('/iniciar-sesion'),
-            child: const Text('Volver a iniciar sesión'),
-          ),
-        ],
+class _RegistrationForm extends StatelessWidget {
+  const _RegistrationForm({
+    required this.formKey,
+    required this.nameController,
+    required this.emailController,
+    required this.passwordController,
+    required this.confirmationController,
+    required this.selectedProfile,
+    required this.onProfileChanged,
+    required this.testNoticeAccepted,
+    required this.onNoticeChanged,
+    required this.isSubmitting,
+    required this.error,
+    required this.onSubmit,
+    required this.isDark,
+  });
+
+  final GlobalKey<FormState> formKey;
+  final TextEditingController nameController;
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
+  final TextEditingController confirmationController;
+  final AccountProfile? selectedProfile;
+  final ValueChanged<AccountProfile> onProfileChanged;
+  final bool testNoticeAccepted;
+  final ValueChanged<bool?> onNoticeChanged;
+  final bool isSubmitting;
+  final String? error;
+  final VoidCallback onSubmit;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          width: 1,
+        ),
+        boxShadow: SaasDecoration.elevatedShadow(isDark),
       ),
-    );
-  }
-
-  Widget _buildConfirmation(
-    BuildContext context,
-    ThemeData theme,
-    String email,
-  ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(36),
+      child: Form(
+        key: formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(
-              Icons.mark_email_unread_outlined,
-              size: 48,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 16),
             Text(
-              'Revisa el correo local de pruebas',
-              style: theme.textTheme.headlineSmall,
-              textAlign: TextAlign.center,
+              'Selecciona tu perfil de usuario',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
             Text(
-              'Si la cuenta puede registrarse, el mensaje de verificación llegará a $email. '
-              'Abre Mailpit en http://localhost:8025 y usa el enlace antes de que venza en 30 minutos.',
-              textAlign: TextAlign.center,
+              'Configuraremos tu consola y herramientas según el rol que desempeñas en la cadena de transporte.',
+              style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 20),
-            SelectableText(
-              'http://localhost:8025',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium,
+
+            // Tarjetas de perfil SaaS
+            ...AccountProfile.values.map((profile) {
+              final isSelected = selectedProfile == profile;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: isSubmitting ? null : () => onProfileChanged(profile),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.primary.withValues(alpha: isDark ? 0.15 : 0.06)
+                          : (isDark ? const Color(0xFF162035) : AppColors.lightSurfaceSubtle),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.primary
+                            : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                        width: isSelected ? 1.8 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppColors.primary : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                            ),
+                          ),
+                          child: Icon(
+                            isSelected ? profile.activeIcon : profile.icon,
+                            color: isSelected ? Colors.white : AppColors.primary,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                profile.label,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                profile.description,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected ? AppColors.primary : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                              width: isSelected ? 6 : 2,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 24),
+
+            // Campos del formulario
+            Text(
+              'Datos personales y de acceso',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+              ),
             ),
+            const SizedBox(height: 18),
+
+            TextFormField(
+              controller: nameController,
+              enabled: !isSubmitting,
+              textCapitalization: TextCapitalization.words,
+              autofillHints: const [AutofillHints.name],
+              maxLength: 120,
+              decoration: const InputDecoration(
+                labelText: 'Nombre completo o de contacto',
+                prefixIcon: Icon(Icons.person_outline_rounded),
+              ),
+              validator: (value) {
+                final name = value?.trim() ?? '';
+                if (name.length < 2) {
+                  return 'Escribe un nombre de al menos 2 caracteres.';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 14),
+
+            TextFormField(
+              controller: emailController,
+              enabled: !isSubmitting,
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              maxLength: 254,
+              decoration: const InputDecoration(
+                labelText: 'Correo electrónico corporativo o personal',
+                prefixIcon: Icon(Icons.mail_outline_rounded),
+              ),
+              validator: (value) {
+                final email = value?.trim() ?? '';
+                if (email.isEmpty || !email.contains('@') || email.length > 254) {
+                  return 'Escribe un correo válido.';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 14),
+
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: passwordController,
+                    enabled: !isSubmitting,
+                    obscureText: true,
+                    autofillHints: const [AutofillHints.newPassword],
+                    decoration: const InputDecoration(
+                      labelText: 'Contraseña',
+                      prefixIcon: Icon(Icons.lock_outline_rounded),
+                    ),
+                    validator: (value) {
+                      final password = value ?? '';
+                      if (password.length < 8) {
+                        return 'Mínimo 8 caracteres.';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: TextFormField(
+                    controller: confirmationController,
+                    enabled: !isSubmitting,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Confirmar contraseña',
+                      prefixIcon: Icon(Icons.check_circle_outline_rounded),
+                    ),
+                    validator: (value) {
+                      if (value != passwordController.text) {
+                        return 'Las contraseñas no coinciden.';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Checkbox de aviso y términos
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF162035) : AppColors.lightSurfaceSubtle,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                ),
+              ),
+              child: CheckboxListTile(
+                value: testNoticeAccepted,
+                onChanged: isSubmitting ? null : onNoticeChanged,
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: Text(
+                  'Acepto los términos de servicio, políticas de datos y condiciones del entorno de transporte de TRAXIA.',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  ),
+                ),
+              ),
+            ),
+
+            if (error != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.errorContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        error!,
+                        style: const TextStyle(color: Color(0xFF991B1B), fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 28),
+
+            FilledButton(
+              onPressed: (isSubmitting || selectedProfile == null || !testNoticeAccepted)
+                  ? null
+                  : onSubmit,
+              child: isSubmitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Completar Registro'),
+            ),
+
             const SizedBox(height: 16),
-            OutlinedButton(
-              onPressed: () => setState(() => _registeredEmail = null),
-              child: const Text('Volver al formulario'),
-            ),
-            TextButton(
-              onPressed: () => context.go('/iniciar-sesion'),
-              child: const Text('Ya verifiqué mi correo; iniciar sesión'),
+            Center(
+              child: TextButton(
+                onPressed: () => context.go('/iniciar-sesion'),
+                child: const Text('¿Ya tienes una cuenta? Iniciar sesión'),
+              ),
             ),
           ],
         ),
@@ -360,95 +472,58 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
   }
 }
 
-class _ProfileCard extends StatelessWidget {
-  const _ProfileCard({
-    required this.profile,
-    required this.selected,
-    required this.enabled,
-    required this.onTap,
-  });
+class _SuccessCard extends StatelessWidget {
+  const _SuccessCard({required this.email, required this.isDark});
 
-  final AccountProfile profile;
-  final bool selected;
-  final bool enabled;
-  final VoidCallback onTap;
+  final String email;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: profile.label,
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(20),
-        child: Card(
-          color: selected
-              ? theme.colorScheme.primaryContainer
-              : theme.colorScheme.surface,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  profile.icon,
-                  color: selected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurfaceVariant,
-                  size: 30,
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  profile.label,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Icon(
-                      selected
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_unchecked,
-                      size: 20,
-                      color: selected ? theme.colorScheme.primary : null,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(selected ? 'Seleccionado' : 'Seleccionar'),
-                  ],
-                ),
-              ],
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        ),
+        boxShadow: SaasDecoration.elevatedShadow(isDark),
+      ),
+      padding: const EdgeInsets.all(40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: AppColors.successContainer,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.mark_email_read_rounded, color: AppColors.success, size: 36),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            '¡Cuenta creada con éxito!',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Hemos enviado un enlace de confirmación a $email. Revisa tu bandeja de entrada o abre tu servicio de correo para activar tu cuenta antes de que expire en 30 minutos.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14.5,
+              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+              height: 1.5,
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Semantics(
-      liveRegion: true,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.errorContainer,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          message,
-          style: TextStyle(color: theme.colorScheme.onErrorContainer),
-        ),
+          const SizedBox(height: 32),
+          FilledButton.icon(
+            onPressed: () => context.go('/iniciar-sesion'),
+            icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+            label: const Text('Ir al inicio de sesión'),
+          ),
+        ],
       ),
     );
   }

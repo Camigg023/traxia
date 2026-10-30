@@ -5,6 +5,7 @@ import '../loads/load_api.dart';
 import '../loads/load_models.dart';
 import '../loads/trips_api.dart';
 import '../state/app_providers.dart';
+import '../theme/app_colors.dart';
 import '../widgets/app_nav_bar.dart';
 
 class LoadsScreen extends ConsumerStatefulWidget {
@@ -70,24 +71,27 @@ class _LoadsScreenState extends ConsumerState<LoadsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppNavBar(
         currentSection: AppNavSection.loads,
         title: 'Cargas Disponibles',
         extraActions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             onPressed: _fetchLoads,
-            tooltip: 'Actualizar',
+            tooltip: 'Actualizar listado',
           ),
         ],
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 960),
+          constraints: const BoxConstraints(maxWidth: 1080),
           child: Column(
             children: [
-              _buildFilterBar(),
+              _buildFilterBar(isDark),
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
@@ -96,39 +100,29 @@ class _LoadsScreenState extends ConsumerState<LoadsScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text(_error!, style: const TextStyle(color: Colors.red)),
+                                Text(_error!, style: const TextStyle(color: AppColors.error)),
                                 const SizedBox(height: 12),
-                                FilledButton(onPressed: _fetchLoads, child: const Text('Reintentar')),
+                                FilledButton.icon(
+                                  onPressed: _fetchLoads,
+                                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                                  label: const Text('Reintentar'),
+                                ),
                               ],
                             ),
                           )
                         : _loads.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(Icons.local_shipping_outlined, size: 64, color: Colors.grey),
-                                    const SizedBox(height: 16),
-                                    const Text('No hay cargas disponibles con los filtros actuales.',
-                                        style: TextStyle(fontSize: 16, color: Colors.grey)),
-                                    const SizedBox(height: 12),
-                                    OutlinedButton(
-                                      onPressed: () {
-                                        _originFilter.clear();
-                                        _destFilter.clear();
-                                        setState(() => _selectedVehicleFilter = null);
-                                        _fetchLoads();
-                                      },
-                                      child: const Text('Limpiar filtros'),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: const EdgeInsets.all(16),
+                            ? _buildEmptyState(isDark)
+                            : ListView.separated(
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                                 itemCount: _loads.length,
-                                itemBuilder: (context, index) {
-                                  return _buildLoadCard(_loads[index]);
+                                separatorBuilder: (ctx, i) => const SizedBox(height: 16),
+                                itemBuilder: (ctx, i) {
+                                  final load = _loads[i];
+                                  return _LoadCard(
+                                    load: load,
+                                    onSimulate: () => _openSimulationAndBidModal(load),
+                                    isDark: isDark,
+                                  );
                                 },
                               ),
               ),
@@ -139,113 +133,85 @@ class _LoadsScreenState extends ConsumerState<LoadsScreen> {
     );
   }
 
-  Widget _buildFilterBar() {
-    return Card(
-      margin: const EdgeInsets.all(16),
-      elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _originFilter,
-                decoration: const InputDecoration(
-                  labelText: 'Ciudad Origen',
-                  prefixIcon: Icon(Icons.trip_origin),
-                  isDense: true,
-                ),
-                onSubmitted: (_) => _fetchLoads(),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: _destFilter,
-                decoration: const InputDecoration(
-                  labelText: 'Ciudad Destino',
-                  prefixIcon: Icon(Icons.location_on_outlined),
-                  isDense: true,
-                ),
-                onSubmitted: (_) => _fetchLoads(),
-              ),
-            ),
-            const SizedBox(width: 8),
-            FilledButton.icon(
-              onPressed: _fetchLoads,
-              icon: const Icon(Icons.search),
-              label: const Text('Filtrar'),
-            ),
-          ],
+  Widget _buildFilterBar(bool isDark) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
         ),
+        boxShadow: SaasDecoration.softShadow(isDark),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _originFilter,
+              decoration: const InputDecoration(
+                hintText: 'Ciudad origen (ej: Bogotá)',
+                prefixIcon: Icon(Icons.location_on_outlined, size: 20),
+                contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              ),
+              onSubmitted: (_) => _fetchLoads(),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              controller: _destFilter,
+              decoration: const InputDecoration(
+                hintText: 'Ciudad destino (ej: Medellín)',
+                prefixIcon: Icon(Icons.flag_outlined, size: 20),
+                contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              ),
+              onSubmitted: (_) => _fetchLoads(),
+            ),
+          ),
+          const SizedBox(width: 12),
+          FilledButton.icon(
+            onPressed: _fetchLoads,
+            icon: const Icon(Icons.search_rounded, size: 18),
+            label: const Text('Filtrar'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildLoadCard(LoadModel load) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  Widget _buildEmptyState(bool isDark) {
+    return Center(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(32),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Chip(
-                  label: Text('${load.vehicleType} • ${load.bodyType}'),
-                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                ),
-                Text(
-                  load.pricingType == 'OFFERED'
-                      ? '\$ ${load.offeredPrice?.toStringAsFixed(0) ?? "0"} COP'
-                      : 'Cotización abierta',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.green),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.arrow_circle_right, color: Colors.blue),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '${load.originCity} (${load.originDepartment}) ➔ ${load.destinationCity} (${load.destinationDepartment})',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text('Producto: ${load.productType} • Peso: ${load.weightKg.toStringAsFixed(0)} Kg'),
-            if (load.requiresRefrigeration)
-              const Row(
-                children: [
-                  Icon(Icons.ac_unit, size: 16, color: Colors.cyan),
-                  SizedBox(width: 4),
-                  Text('Requiere refrigeración', style: TextStyle(color: Colors.cyan, fontSize: 13)),
-                ],
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
               ),
-            if (load.specialInstructions != null && load.specialInstructions!.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text('Instrucciones: ${load.specialInstructions}',
-                  style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
-            ],
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Publicado por: ${load.publisherName}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                FilledButton.tonalIcon(
-                  onPressed: () => _openSimulationAndBidModal(load),
-                  icon: const Icon(Icons.calculate_outlined),
-                  label: const Text('Simular y Postularse'),
-                ),
-              ],
+              child: const Icon(Icons.local_shipping_outlined, size: 48, color: AppColors.primary),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'No hay cargas con estos criterios',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Prueba borrando los filtros de búsqueda o publica una nueva carga para verla aquí.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                fontSize: 14,
+              ),
             ),
           ],
         ),
@@ -254,8 +220,153 @@ class _LoadsScreenState extends ConsumerState<LoadsScreen> {
   }
 }
 
+class _LoadCard extends StatelessWidget {
+  const _LoadCard({
+    required this.load,
+    required this.onSimulate,
+    required this.isDark,
+  });
+
+  final LoadModel load;
+  final VoidCallback onSimulate;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        ),
+        boxShadow: SaasDecoration.softShadow(isDark),
+      ),
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  load.status,
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11.5,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${load.vehicleType} • ${load.bodyType}',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                load.offeredPrice != null
+                    ? '\$ ${load.offeredPrice!.toStringAsFixed(0)} COP'
+                    : 'A convenir',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.trip_origin_rounded, size: 16, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${load.originCity}, ${load.originDepartment}',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                        ),
+                      ],
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 7),
+                      child: SizedBox(
+                        height: 16,
+                        child: VerticalDivider(thickness: 1.5),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_rounded, size: 16, color: AppColors.secondary),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${load.destinationCity}, ${load.destinationDepartment}',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${load.weightKg.toStringAsFixed(0)} Kg',
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                  Text(
+                    load.productType,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          const Divider(),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              OutlinedButton.icon(
+                onPressed: onSimulate,
+                icon: const Icon(Icons.calculate_rounded, size: 18),
+                label: const Text('Simular Gemelo Digital y Ofertar'),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.primary),
+                  foregroundColor: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SimulationAndBidDialog extends ConsumerStatefulWidget {
   const _SimulationAndBidDialog({required this.load});
+
   final LoadModel load;
 
   @override
@@ -268,22 +379,19 @@ class _SimulationAndBidDialogState extends ConsumerState<_SimulationAndBidDialog
   String? _simError;
 
   final _bidAmountController = TextEditingController();
-  final _notesController = TextEditingController();
+  final _commentController = TextEditingController();
   bool _isSubmittingBid = false;
 
   @override
   void initState() {
     super.initState();
     _loadSimulation();
-    if (widget.load.offeredPrice != null) {
-      _bidAmountController.text = widget.load.offeredPrice!.toStringAsFixed(0);
-    }
   }
 
   @override
   void dispose() {
     _bidAmountController.dispose();
-    _notesController.dispose();
+    _commentController.dispose();
     super.dispose();
   }
 
@@ -294,153 +402,213 @@ class _SimulationAndBidDialogState extends ConsumerState<_SimulationAndBidDialog
       setState(() {
         _simulation = sim;
         _isLoadingSim = false;
-        if (_bidAmountController.text.isEmpty) {
-          _bidAmountController.text = sim.suggestedBaseFreightCop.toStringAsFixed(0);
-        }
+        _bidAmountController.text = sim.suggestedBaseFreightCop.toStringAsFixed(0);
       });
     } catch (e) {
       setState(() {
-        _simError = 'No se pudo cargar la simulación: $e';
+        _simError = 'Error simulando ruta: $e';
         _isLoadingSim = false;
       });
     }
   }
 
   Future<void> _submitBid() async {
-    final amount = double.tryParse(_bidAmountController.text.trim());
-    if (amount == null || amount < 1000) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa un monto válido para tu oferta.'), backgroundColor: Colors.red),
-      );
-      return;
-    }
-
-    final auth = ref.read(authControllerProvider);
-    final token = auth.accessToken;
-    if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Inicia sesión para enviar tu postulación.'), backgroundColor: Colors.red),
-      );
-      return;
-    }
+    final token = ref.read(authControllerProvider).accessToken;
+    if (token == null) return;
 
     setState(() => _isSubmittingBid = true);
     try {
       final api = TripsApi.fromEnvironment();
       await api.createBid(
         loadId: widget.load.id,
-        offeredAmount: amount,
-        notes: _notesController.text.trim(),
+        offeredAmount: double.tryParse(_bidAmountController.text) ?? (widget.load.offeredPrice ?? 0.0),
+        notes: _commentController.text.trim().isEmpty ? null : _commentController.text.trim(),
         accessToken: token,
       );
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('¡Oferta enviada exitosamente! La empresa publicadora revisará tu propuesta.'),
-            backgroundColor: Colors.green,
+            content: Text('¡Oferta enviada exitosamente al generador de carga!'),
+            backgroundColor: AppColors.success,
           ),
         );
       }
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _isSubmittingBid = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al enviar oferta: \$e'), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al ofertar: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmittingBid = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text('Simulación de Costos y Oferta - Carga #${widget.load.id.substring(0, 8)}'),
-      content: SizedBox(
-        width: 600,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${widget.load.originCity} ➔ ${widget.load.destinationCity}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              if (_isLoadingSim)
-                const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
-              else if (_simError != null)
-                Text(_simError!, style: const TextStyle(color: Colors.red))
-              else if (_simulation != null) ...[
-                Card(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: Padding(
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Dialog(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 620),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.calculate_rounded, color: AppColors.primary, size: 24),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Gemelo Digital & Oferta de Flete',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                          ),
+                          Text(
+                            '${widget.load.originCity} → ${widget.load.destinationCity}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Divider(),
+                const SizedBox(height: 16),
+                if (_isLoadingSim)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else if (_simError != null)
+                  Text(_simError!, style: const TextStyle(color: AppColors.error))
+                else if (_simulation != null) ...[
+                  Container(
                     padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF162035) : AppColors.lightSurfaceSubtle,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.hub_outlined, color: Colors.blue),
-                            SizedBox(width: 8),
-                            Text('Gemelo Digital - Parámetros de Ruta', style: TextStyle(fontWeight: FontWeight.bold)),
-                          ],
+                        const Text(
+                          'Análisis Predictivo de Costos',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                         ),
+                        const SizedBox(height: 12),
+                        _SimRow('Distancia estimada:', '${_simulation!.estimatedDistanceKm} km'),
+                        _SimRow('Consumo combustible:', '${_simulation!.estimatedFuelGallons.toStringAsFixed(1)} Galones'),
+                        _SimRow('Costo ACPM (\$10.500 COP):', '\$ ${_simulation!.estimatedFuelCostCop.toStringAsFixed(0)} COP'),
+                        _SimRow('Peajes en ruta (${_simulation!.estimatedTollsCount}):', '\$ ${_simulation!.estimatedTollsCostCop.toStringAsFixed(0)} COP'),
                         const Divider(),
-                        Text('• Distancia estimada: ${_simulation!.estimatedDistanceKm} Km'),
-                        Text('• Peajes estimados: ${_simulation!.estimatedTollsCount} (~ \$ ${_simulation!.estimatedTollsCostCop.toStringAsFixed(0)} COP)'),
-                        Text('• Combustible estimado: ${_simulation!.estimatedFuelGallons.toStringAsFixed(1)} Gal (~ \$ ${_simulation!.estimatedFuelCostCop.toStringAsFixed(0)} COP)'),
-                        Text('• Costo directo proyectado: \$ ${_simulation!.estimatedDirectCostCop.toStringAsFixed(0)} COP',
-                            style: const TextStyle(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 6),
-                        Text(
-                          '• Flete base sugerido por TRAXIA: \$ ${_simulation!.suggestedBaseFreightCop.toStringAsFixed(0)} COP',
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _simulation!.disclaimer,
-                          style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.grey),
-                        ),
+                        _SimRow('Flete mínimo sugerido:', '\$ ${_simulation!.suggestedBaseFreightCop.toStringAsFixed(0)} COP', highlight: true),
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                const Text('Tu Oferta para este Viaje', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _bidAmountController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Valor propuesto (COP) *',
-                    prefixText: '\$ ',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 24),
+                  const Text('Tu Oferta Comercial', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _bidAmountController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Valor postulado de tu flete (COP)',
+                      prefixText: '\$ ',
+                      prefixIcon: Icon(Icons.attach_money_rounded),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _notesController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Mensaje / Condiciones de recogida',
-                    hintText: 'Ej: Vehículo disponible de inmediato en zona norte.',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _commentController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Comentarios o condiciones de tu oferta',
+                      hintText: 'Ej: Vehículo disponible de inmediato para cargue.',
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancelar'),
+                      ),
+                      const SizedBox(width: 12),
+                      FilledButton(
+                        onPressed: _isSubmittingBid ? null : _submitBid,
+                        child: _isSubmittingBid
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Enviar Oferta'),
+                      ),
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar')),
-        FilledButton(
-          onPressed: _isSubmittingBid ? null : _submitBid,
-          child: _isSubmittingBid
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : const Text('Enviar Postulación'),
-        ),
-      ],
+    );
+  }
+}
+
+class _SimRow extends StatelessWidget {
+  const _SimRow(this.label, this.value, {this.highlight = false});
+
+  final String label;
+  final String value;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontWeight: highlight ? FontWeight.w700 : FontWeight.w500, fontSize: 13)),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: highlight ? 14.5 : 13,
+              color: highlight ? AppColors.primary : null,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

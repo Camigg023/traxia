@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../state/app_providers.dart';
+import '../theme/app_colors.dart';
 import '../widgets/theme_mode_toggle.dart';
 
 class VerifyEmailScreen extends ConsumerStatefulWidget {
@@ -36,13 +37,11 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
       }
     } on DioException catch (exception) {
       if (mounted) {
-        setState(
-            () => _error = ref.read(authApiProvider).messageFor(exception));
+        setState(() => _error = ref.read(authApiProvider).messageFor(exception));
       }
     } on FormatException {
       if (mounted) {
-        setState(
-            () => _error = 'El servidor devolvió una respuesta no válida.');
+        setState(() => _error = 'El servidor devolvió una respuesta no válida.');
       }
     } finally {
       if (mounted) {
@@ -54,82 +53,114 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final hasToken = widget.token != null && widget.token!.isNotEmpty;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Verificar correo'),
-        actions: const [ThemeModeToggle(), SizedBox(width: 12)],
+        title: const Text('Verificación de Cuenta'),
+        actions: const [ThemeModeToggle(), SizedBox(width: 16)],
       ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(28),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Icon(
-                      _message == null
-                          ? Icons.mark_email_read_outlined
-                          : Icons.verified_outlined,
-                      size: 48,
-                      color: theme.colorScheme.primary,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _message ?? 'Confirma tu correo de prueba',
-                      style: theme.textTheme.headlineSmall,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _message != null
-                          ? 'La cuenta ya está verificada. El perfil elegido es solo una intención de registro; no concede permisos de negocio.'
-                          : hasToken
-                              ? 'Confirma la solicitud para activar la cuenta local. El enlace solo se puede usar una vez y vence en 30 minutos.'
-                              : 'El enlace no incluye un token de verificación. Abre el enlace completo recibido en Mailpit.',
-                      textAlign: TextAlign.center,
-                    ),
-                    if (_error != null) ...[
-                      const SizedBox(height: 16),
-                      Semantics(
-                        liveRegion: true,
-                        child: Text(
-                          _error!,
-                          style: TextStyle(color: theme.colorScheme.error),
-                          textAlign: TextAlign.center,
-                        ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                ),
+                boxShadow: SaasDecoration.elevatedShadow(isDark),
+              ),
+              padding: const EdgeInsets.all(36),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: _message != null
+                            ? AppColors.successContainer
+                            : AppColors.primary.withValues(alpha: isDark ? 0.2 : 0.1),
+                        shape: BoxShape.circle,
                       ),
-                    ],
-                    const SizedBox(height: 24),
-                    if (_message != null)
-                      FilledButton(
-                        onPressed: () => context.go('/iniciar-sesion'),
-                        child: const Text('Iniciar sesión'),
-                      )
-                    else
-                      FilledButton(
-                        onPressed: !hasToken || _isSubmitting ? null : _verify,
-                        child: _isSubmitting
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text('Verificar correo'),
+                      child: Icon(
+                        _message == null
+                            ? Icons.mark_email_read_rounded
+                            : Icons.verified_rounded,
+                        size: 32,
+                        color: _message != null ? AppColors.success : AppColors.primary,
                       ),
-                    TextButton(
-                      onPressed: _isSubmitting
-                          ? null
-                          : () => context.go('/iniciar-sesion'),
-                      child: const Text('Volver a iniciar sesión'),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    _message ??
+                        (hasToken
+                            ? 'Confirma tu dirección de correo'
+                            : 'Falta el token de verificación'),
+                    style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _message != null
+                        ? 'Tu cuenta ha sido validada y está lista para operar en TRAXIA.'
+                        : hasToken
+                            ? 'Haz clic en el botón inferior para validar tu cuenta y comenzar a publicar u ofertar fletes.'
+                            : 'No encontramos el código de verificación en el enlace. Revisa tu correo o solicita uno nuevo.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.errorContainer,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(color: Color(0xFF991B1B), fontSize: 13),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ],
-                ),
+                  const SizedBox(height: 28),
+                  if (_message != null) ...[
+                    FilledButton(
+                      onPressed: () => context.go('/iniciar-sesion'),
+                      child: const Text('Iniciar sesión en TRAXIA'),
+                    ),
+                  ] else if (hasToken) ...[
+                    FilledButton(
+                      onPressed: _isSubmitting ? null : _verify,
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text('Confirmar mi correo electrónico'),
+                    ),
+                  ] else ...[
+                    OutlinedButton(
+                      onPressed: () => context.go('/iniciar-sesion'),
+                      child: const Text('Volver al inicio de sesión'),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),

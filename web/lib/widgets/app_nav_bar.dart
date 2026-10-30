@@ -1,8 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../state/app_providers.dart';
+import '../theme/app_colors.dart';
 import 'theme_mode_toggle.dart';
 
 enum AppNavSection {
@@ -26,153 +28,186 @@ class AppNavBar extends ConsumerWidget implements PreferredSizeWidget {
   final List<Widget> extraActions;
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 1);
+  Size get preferredSize => const Size.fromHeight(68);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final width = MediaQuery.sizeOf(context).width;
-    final isDesktop = width >= 860;
+    final isDesktop = width >= 900;
     final auth = ref.watch(authControllerProvider);
     final user = auth.user;
     final isAdmin = user?.roles.contains('ADMIN') ?? false;
 
-    return AppBar(
-      elevation: 0,
-      scrolledUnderElevation: 2,
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
+    // Glassmorphism sutil para la barra superior
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: Container(
-          color: theme.dividerColor.withValues(alpha: 0.15),
-          height: 1,
-        ),
-      ),
-      leading: !isDesktop
-          ? IconButton(
-              icon: const Icon(Icons.menu),
-              tooltip: 'Abrir menú de navegación',
-              onPressed: () => _openMobileMenu(context, ref, currentSection, isAdmin),
-            )
-          : null,
-      titleSpacing: isDesktop ? 20 : 0,
-      title: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Logo e identidad de marca
-          InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: () {
-              if (currentSection != AppNavSection.dashboard) {
-                context.go('/panel');
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.local_shipping,
-                      color: theme.colorScheme.primary,
-                      size: 20,
+          height: preferredSize.height,
+          decoration: BoxDecoration(
+            color: (isDark ? AppColors.darkSurface : Colors.white).withValues(alpha: 0.82),
+            border: Border(
+              bottom: BorderSide(
+                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                width: 1,
+              ),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: SafeArea(
+            bottom: false,
+            child: Row(
+              children: [
+                if (!isDesktop) ...[
+                  IconButton(
+                    icon: const Icon(Icons.menu_rounded),
+                    tooltip: 'Abrir menú',
+                    onPressed: () => _openMobileMenu(context, ref, currentSection, isAdmin),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+
+                // Logo e isotipo SaaS TRAXIA
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    if (currentSection != AppNavSection.dashboard) {
+                      context.go('/panel');
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppColors.primary, AppColors.secondary],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.35),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.local_shipping_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'TRAXIA',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.4,
+                            fontSize: 19,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'PRO',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'TRAXIA',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
-                      color: theme.colorScheme.onSurface,
-                      fontSize: 18,
+                ),
+
+                if (isAdmin) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.errorContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'ADMIN',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.error,
+                      ),
                     ),
                   ),
                 ],
-              ),
+
+                // Navegación central en Desktop
+                if (isDesktop) ...[
+                  const SizedBox(width: 32),
+                  _DesktopNavLink(
+                    icon: Icons.grid_view_rounded,
+                    label: 'Panel',
+                    isActive: currentSection == AppNavSection.dashboard,
+                    onTap: () => context.go('/panel'),
+                  ),
+                  const SizedBox(width: 4),
+                  _DesktopNavLink(
+                    icon: Icons.add_box_rounded,
+                    label: 'Publicar Carga',
+                    isActive: currentSection == AppNavSection.publishLoad,
+                    onTap: () => context.go('/publicar-carga'),
+                  ),
+                  const SizedBox(width: 4),
+                  _DesktopNavLink(
+                    icon: Icons.explore_rounded,
+                    label: 'Cargas Disponibles',
+                    isActive: currentSection == AppNavSection.loads,
+                    onTap: () => context.go('/cargas'),
+                  ),
+                  const SizedBox(width: 4),
+                  _DesktopNavLink(
+                    icon: Icons.route_rounded,
+                    label: 'Mis Viajes',
+                    isActive: currentSection == AppNavSection.trips,
+                    onTap: () => context.go('/viajes'),
+                  ),
+                ],
+
+                const Spacer(),
+
+                // Acciones adicionales (refresh, botones contextuales)
+                ...extraActions,
+
+                const SizedBox(width: 6),
+                const ThemeModeToggle(),
+                const SizedBox(width: 12),
+
+                // Perfil de usuario / Logout
+                if (user != null) ...[
+                  _UserMenuButton(user: user, onLogout: () => _confirmLogout(context, ref)),
+                ],
+              ],
             ),
           ),
-          if (isAdmin) ...[
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.errorContainer,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                'ADMIN',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: theme.colorScheme.onErrorContainer,
-                ),
-              ),
-            ),
-          ],
-          if (isDesktop) ...[
-            const SizedBox(width: 28),
-            // Enlaces de navegación desktop
-            _DesktopNavLink(
-              icon: Icons.space_dashboard_outlined,
-              activeIcon: Icons.space_dashboard,
-              label: 'Panel',
-              isActive: currentSection == AppNavSection.dashboard,
-              onTap: () => context.go('/panel'),
-            ),
-            const SizedBox(width: 8),
-            _DesktopNavLink(
-              icon: Icons.add_circle_outline,
-              activeIcon: Icons.add_circle,
-              label: 'Publicar Carga',
-              isActive: currentSection == AppNavSection.publishLoad,
-              onTap: () => context.go('/publicar-carga'),
-            ),
-            const SizedBox(width: 8),
-            _DesktopNavLink(
-              icon: Icons.search,
-              activeIcon: Icons.travel_explore,
-              label: 'Cargas Disponibles',
-              isActive: currentSection == AppNavSection.loads,
-              onTap: () => context.go('/cargas'),
-            ),
-            const SizedBox(width: 8),
-            _DesktopNavLink(
-              icon: Icons.route_outlined,
-              activeIcon: Icons.route,
-              label: 'Mis Viajes',
-              isActive: currentSection == AppNavSection.trips,
-              onTap: () => context.go('/viajes'),
-            ),
-          ] else if (title != null) ...[
-            const SizedBox(width: 8),
-            Text(
-              '| $title',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ],
+        ),
       ),
-      actions: [
-        ...extraActions,
-        const ThemeModeToggle(),
-        const SizedBox(width: 4),
-        if (user != null)
-          _UserAccountMenu(
-            email: user.email,
-            roles: user.roles,
-            onOpenAccountDetails: () => _showAccountDetailsModal(context, user.email, user.roles, user.id),
-            onSignOut: () => _handleSignOut(context, ref),
-          ),
-        const SizedBox(width: 12),
-      ],
     );
   }
 
@@ -185,230 +220,207 @@ class AppNavBar extends ConsumerWidget implements PreferredSizeWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        final theme = Theme.of(sheetContext);
-        final auth = ref.read(authControllerProvider);
-        final user = auth.user;
-
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.local_shipping,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'TRAXIA',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.1,
-                          ),
-                        ),
-                        Text(
-                          user?.email ?? 'Sesión activa',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.space_dashboard_outlined),
-                  title: const Text('Panel de inicio'),
-                  selected: currentSection == AppNavSection.dashboard,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    context.go('/panel');
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.add_circle_outline),
-                  title: const Text('Publicar Carga'),
-                  selected: currentSection == AppNavSection.publishLoad,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    context.go('/publicar-carga');
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.search),
-                  title: const Text('Cargas Disponibles'),
-                  selected: currentSection == AppNavSection.loads,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    context.go('/cargas');
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.route_outlined),
-                  title: const Text('Mis Viajes'),
-                  selected: currentSection == AppNavSection.trips,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    context.go('/viajes');
-                  },
-                ),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.person_outline),
-                  title: const Text('Mi Cuenta y Perfil'),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    if (user != null) {
-                      _showAccountDetailsModal(context, user.email, user.roles, user.id);
-                    }
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.logout, color: theme.colorScheme.error),
-                  title: Text(
-                    'Cerrar Sesión',
-                    style: TextStyle(color: theme.colorScheme.error),
-                  ),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    _handleSignOut(context, ref);
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showAccountDetailsModal(
-    BuildContext context,
-    String email,
-    List<String> roles,
-    String id,
-  ) {
-    showDialog<void>(
-      context: context,
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
         final theme = Theme.of(ctx);
-        return AlertDialog(
-          title: Row(
+        final isDark = theme.brightness == Brightness.dark;
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(
-                backgroundColor: theme.colorScheme.primaryContainer,
-                child: Text(
-                  email.substring(0, 1).toUpperCase(),
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'Mi Cuenta TRAXIA',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+              _MobileMenuItem(
+                icon: Icons.grid_view_rounded,
+                label: 'Panel General',
+                isActive: currentSection == AppNavSection.dashboard,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.go('/panel');
+                },
+              ),
+              _MobileMenuItem(
+                icon: Icons.add_box_rounded,
+                label: 'Publicar Carga',
+                isActive: currentSection == AppNavSection.publishLoad,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.go('/publicar-carga');
+                },
+              ),
+              _MobileMenuItem(
+                icon: Icons.explore_rounded,
+                label: 'Cargas Disponibles',
+                isActive: currentSection == AppNavSection.loads,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.go('/cargas');
+                },
+              ),
+              _MobileMenuItem(
+                icon: Icons.route_rounded,
+                label: 'Mis Viajes Activos',
+                isActive: currentSection == AppNavSection.trips,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.go('/viajes');
+                },
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _confirmLogout(context, ref);
+                },
+                icon: const Icon(Icons.logout_rounded, size: 18),
+                label: const Text('Cerrar sesión'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
                 ),
               ),
             ],
           ),
-          content: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _AccountDetailItem(label: 'Correo electrónico', value: email),
-                const SizedBox(height: 12),
-                _AccountDetailItem(
-                  label: 'Roles de plataforma',
-                  value: roles.isEmpty ? 'Usuario general' : roles.join(', '),
-                ),
-                const SizedBox(height: 12),
-                _AccountDetailItem(
-                  label: 'Identificador único',
-                  value: id,
-                  isCode: true,
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, size: 20, color: theme.colorScheme.primary),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text(
-                          'Las operaciones de flete y transporte están habilitadas en tu cuenta.',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cerrar'),
-            ),
-          ],
         );
       },
     );
   }
 
-  Future<void> _handleSignOut(BuildContext context, WidgetRef ref) async {
-    final signedOut = await ref.read(authControllerProvider).signOut();
-    if (signedOut && context.mounted) {
-      context.go('/iniciar-sesion');
-    }
+  void _confirmLogout(BuildContext context, WidgetRef ref) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Cerrar sesión?'),
+        content: const Text(
+          'Finalizarás tu sesión actual en TRAXIA. Podrás volver a entrar con tus credenciales en cualquier momento.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await ref.read(authControllerProvider).signOut();
+              if (context.mounted) {
+                context.go('/iniciar-sesion');
+              }
+            },
+            child: const Text('Cerrar sesión'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
-class _DesktopNavLink extends StatelessWidget {
+class _DesktopNavLink extends StatefulWidget {
   const _DesktopNavLink({
     required this.icon,
-    required this.activeIcon,
     required this.label,
     required this.isActive,
     required this.onTap,
   });
 
   final IconData icon;
-  final IconData activeIcon;
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  @override
+  State<_DesktopNavLink> createState() => _DesktopNavLinkState();
+}
+
+class _DesktopNavLinkState extends State<_DesktopNavLink> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final Color textColor;
+    final Color iconColor;
+    final Color bgColor;
+
+    if (widget.isActive) {
+      textColor = AppColors.primary;
+      iconColor = AppColors.primary;
+      bgColor = AppColors.primary.withValues(alpha: isDark ? 0.15 : 0.08);
+    } else if (_isHovered) {
+      textColor = theme.colorScheme.onSurface;
+      iconColor = AppColors.primary;
+      bgColor = isDark ? AppColors.darkSurfaceSubtle : AppColors.lightSurfaceSubtle;
+    } else {
+      textColor = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+      iconColor = isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
+      bgColor = Colors.transparent;
+    }
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(10),
+            border: widget.isActive
+                ? Border.all(color: AppColors.primary.withValues(alpha: 0.25), width: 1)
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(widget.icon, size: 18, color: iconColor),
+              const SizedBox(width: 8),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: widget.isActive ? FontWeight.w700 : FontWeight.w500,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileMenuItem extends StatelessWidget {
+  const _MobileMenuItem({
+    required this.icon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  final IconData icon;
   final String label;
   final bool isActive;
   final VoidCallback onTap;
@@ -416,156 +428,140 @@ class _DesktopNavLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = isActive ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.8);
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isActive ? theme.colorScheme.primaryContainer.withValues(alpha: 0.45) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(isActive ? activeIcon : icon, size: 18, color: color),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                color: color,
-              ),
-            ),
-          ],
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: isActive ? AppColors.primary : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+      ),
+      title: Text(
+        label,
+        style: TextStyle(
+          fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+          color: isActive ? AppColors.primary : theme.colorScheme.onSurface,
         ),
       ),
+      selected: isActive,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onTap: onTap,
     );
   }
 }
 
-class _UserAccountMenu extends StatelessWidget {
-  const _UserAccountMenu({
-    required this.email,
-    required this.roles,
-    required this.onOpenAccountDetails,
-    required this.onSignOut,
-  });
+class _UserMenuButton extends StatelessWidget {
+  const _UserMenuButton({required this.user, required this.onLogout});
 
-  final String email;
-  final List<String> roles;
-  final VoidCallback onOpenAccountDetails;
-  final VoidCallback onSignOut;
+  final dynamic user;
+  final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final email = (user.email as String?) ?? 'usuario';
+    final initial = email.isNotEmpty ? email[0].toUpperCase() : 'U';
 
     return PopupMenuButton<String>(
-      tooltip: 'Perfil y cuenta',
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      icon: CircleAvatar(
-        radius: 16,
-        backgroundColor: theme.colorScheme.primaryContainer,
-        child: Text(
-          email.isNotEmpty ? email.substring(0, 1).toUpperCase() : 'U',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-            color: theme.colorScheme.primary,
-          ),
-        ),
+      offset: const Offset(0, 50),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
       ),
-      onSelected: (value) {
-        if (value == 'account') {
-          onOpenAccountDetails();
-        } else if (value == 'logout') {
-          onSignOut();
+      color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+      tooltip: 'Cuenta de usuario',
+      onSelected: (val) {
+        if (val == 'logout') {
+          onLogout();
+        } else if (val == 'panel') {
+          context.go('/panel');
         }
       },
-      itemBuilder: (context) => [
+      itemBuilder: (ctx) => [
         PopupMenuItem(
           enabled: false,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
+                'Sesión activa',
+                style: TextStyle(fontSize: 11, color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted),
+              ),
+              const SizedBox(height: 2),
+              Text(
                 email,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
-              Text(
-                roles.isEmpty ? 'Usuario TRAXIA' : roles.join(', '),
-                style: TextStyle(
-                  fontSize: 11,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                ),
-              ),
-              const Divider(),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
+          value: 'panel',
+          child: Row(
+            children: [
+              Icon(Icons.person_outline_rounded, size: 18),
+              SizedBox(width: 10),
+              Text('Mi perfil y roles', style: TextStyle(fontSize: 13.5)),
             ],
           ),
         ),
         const PopupMenuItem(
-          value: 'account',
-          child: Row(
-            children: [
-              Icon(Icons.person_outline, size: 18),
-              SizedBox(width: 10),
-              Text('Mi Cuenta / Perfil'),
-            ],
-          ),
-        ),
-        PopupMenuItem(
           value: 'logout',
           child: Row(
             children: [
-              Icon(Icons.logout, size: 18, color: theme.colorScheme.error),
-              const SizedBox(width: 10),
-              Text('Cerrar Sesión', style: TextStyle(color: theme.colorScheme.error)),
+              Icon(Icons.logout_rounded, size: 18, color: AppColors.error),
+              SizedBox(width: 10),
+              Text('Cerrar sesión', style: TextStyle(fontSize: 13.5, color: AppColors.error)),
             ],
           ),
         ),
       ],
-    );
-  }
-}
-
-class _AccountDetailItem extends StatelessWidget {
-  const _AccountDetailItem({
-    required this.label,
-    required this.value,
-    this.isCode = false,
-  });
-
-  final String label;
-  final String value;
-  final bool isCode;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkSurfaceSubtle : AppColors.lightSurfaceSubtle,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
           ),
         ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            fontFamily: isCode ? 'monospace' : null,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 14,
+              backgroundColor: AppColors.primary,
+              child: Text(
+                initial,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 130),
+              child: Text(
+                email,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../loads/load_api.dart';
 import '../loads/load_models.dart';
 import '../state/app_providers.dart';
+import '../theme/app_colors.dart';
 import '../widgets/app_nav_bar.dart';
 
 class PublishLoadScreen extends ConsumerStatefulWidget {
@@ -22,12 +23,12 @@ class _PublishLoadScreenState extends ConsumerState<PublishLoadScreen> {
   final _originDeptController = TextEditingController(text: 'Cundinamarca');
   final _originCityController = TextEditingController(text: 'Bogotá');
   final _originAddressController = TextEditingController();
-  DateTime _pickupDate = DateTime.now().add(const Duration(hours: 4));
+  final DateTime _pickupDate = DateTime.now().add(const Duration(hours: 4));
 
   final _destDeptController = TextEditingController(text: 'Antioquia');
   final _destCityController = TextEditingController(text: 'Medellín');
   final _destAddressController = TextEditingController();
-  DateTime _deliveryDate = DateTime.now().add(const Duration(days: 1, hours: 4));
+  final DateTime _deliveryDate = DateTime.now().add(const Duration(days: 1, hours: 4));
 
   // Paso 2: Mercancía
   final _productTypeController = TextEditingController(text: 'Mercancía seca');
@@ -66,7 +67,6 @@ class _PublishLoadScreenState extends ConsumerState<PublishLoadScreen> {
   String _payer = 'REMITTENT';
   final _instructionsController = TextEditingController();
 
-
   @override
   void dispose() {
     _originDeptController.dispose();
@@ -90,64 +90,59 @@ class _PublishLoadScreenState extends ConsumerState<PublishLoadScreen> {
       _errorMessage = null;
     });
 
-    final authState = ref.read(authControllerProvider);
-    final token = authState.accessToken;
-    if (token == null) {
-      setState(() {
-        _isSubmitting = false;
-        _errorMessage = 'Sesión no válida. Por favor inicia sesión de nuevo.';
-      });
-      return;
-    }
-
-    final weight = double.tryParse(_weightController.text.trim()) ?? 0.0;
-    final volume = double.tryParse(_volumeController.text.trim());
-    final price = _pricingType == 'OFFERED' ? double.tryParse(_priceController.text.trim()) : null;
-
-    final dto = CreateLoadDto(
-      originDepartment: _originDeptController.text.trim(),
-      originCity: _originCityController.text.trim(),
-      originAddress: _originAddressController.text.trim(),
-      pickupDateUtc: _pickupDate,
-      destinationDepartment: _destDeptController.text.trim(),
-      destinationCity: _destCityController.text.trim(),
-      destinationAddress: _destAddressController.text.trim(),
-      deliveryDateUtc: _deliveryDate,
-      productType: _productTypeController.text.trim(),
-      weightKg: weight,
-      volumeM3: volume,
-      packagingType: _packagingController.text.trim(),
-      requiresRefrigeration: _requiresRefrigeration,
-      vehicleType: _selectedVehicleType,
-      bodyType: _selectedBodyType,
-      pricingType: _pricingType,
-      offeredPrice: price,
-      payer: _payer,
-      specialInstructions: _instructionsController.text.trim(),
-    );
-
     try {
+      final token = ref.read(authControllerProvider).accessToken;
+      if (token == null) {
+        throw Exception('Debes iniciar sesión para publicar una carga.');
+      }
+
+      final dto = CreateLoadDto(
+        originDepartment: _originDeptController.text.trim(),
+        originCity: _originCityController.text.trim(),
+        originAddress: _originAddressController.text.trim().isEmpty ? null : _originAddressController.text.trim(),
+        pickupDateUtc: _pickupDate,
+        destinationDepartment: _destDeptController.text.trim(),
+        destinationCity: _destCityController.text.trim(),
+        destinationAddress: _destAddressController.text.trim().isEmpty ? null : _destAddressController.text.trim(),
+        deliveryDateUtc: _deliveryDate,
+        productType: _productTypeController.text.trim(),
+        packagingType: _packagingController.text.trim().isEmpty ? null : _packagingController.text.trim(),
+        weightKg: double.tryParse(_weightController.text) ?? 1000.0,
+        volumeM3: double.tryParse(_volumeController.text),
+        requiresRefrigeration: _requiresRefrigeration,
+        vehicleType: _selectedVehicleType,
+        bodyType: _selectedBodyType,
+        pricingType: _pricingType,
+        offeredPrice: double.tryParse(_priceController.text) ?? 1000000.0,
+        payer: _payer,
+        specialInstructions: _instructionsController.text.trim().isEmpty ? null : _instructionsController.text.trim(),
+      );
+
       final api = LoadApi.fromEnvironment();
       await api.createLoad(load: dto, accessToken: token);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('¡Carga publicada exitosamente! Ya es visible para conductores.'),
-            backgroundColor: Colors.green,
+            content: Text('¡Carga publicada exitosamente en el tablero!'),
+            backgroundColor: AppColors.success,
           ),
         );
-        context.go('/loads');
+        context.go('/cargas');
       }
     } catch (e) {
       setState(() {
-        _isSubmitting = false;
         _errorMessage = 'Error al publicar carga: $e';
+        _isSubmitting = false;
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       appBar: const AppNavBar(
         currentSection: AppNavSection.publishLoad,
@@ -155,56 +150,130 @@ class _PublishLoadScreenState extends ConsumerState<PublishLoadScreen> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: Stepper(
-            type: StepperType.vertical,
-            currentStep: _currentStep,
-            onStepContinue: () {
-              if (_currentStep < 4) {
-                setState(() => _currentStep++);
-              } else {
-                _submitLoad();
-              }
-            },
-            onStepCancel: () {
-              if (_currentStep > 0) {
-                setState(() => _currentStep--);
-              } else {
-                context.go('/dashboard');
-              }
-            },
-            controlsBuilder: (context, details) {
-              return Padding(
-                padding: const EdgeInsets.only(top: 20),
-                child: Row(
-                  children: [
-                    FilledButton(
-                      onPressed: _isSubmitting ? null : details.onStepContinue,
-                      child: _isSubmitting
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : Text(_currentStep == 4 ? 'Publicar Carga' : 'Continuar'),
-                    ),
-                    const SizedBox(width: 12),
-                    if (_currentStep > 0)
-                      OutlinedButton(
-                        onPressed: _isSubmitting ? null : details.onStepCancel,
-                        child: const Text('Atrás'),
-                      ),
-                  ],
+          constraints: const BoxConstraints(maxWidth: 880),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
                 ),
-              );
-            },
-            steps: [
-              _buildStep1(),
-              _buildStep2(),
-              _buildStep3(),
-              _buildStep4(),
-              _buildStep5(),
-            ],
+                boxShadow: SaasDecoration.elevatedShadow(isDark),
+              ),
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: isDark ? 0.2 : 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.add_box_rounded, color: AppColors.primary, size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Nueva Publicación de Carga',
+                              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Define el trayecto, las especificaciones de carga y el flete en COP para recibir postulaciones de conductores.',
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 16),
+                  if (_errorMessage != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: AppColors.errorContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline_rounded, color: AppColors.error),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: const TextStyle(color: Color(0xFF991B1B), fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  Stepper(
+                    physics: const NeverScrollableScrollPhysics(),
+                    type: StepperType.vertical,
+                    currentStep: _currentStep,
+                    onStepContinue: () {
+                      if (_currentStep < 4) {
+                        setState(() => _currentStep++);
+                      } else {
+                        _submitLoad();
+                      }
+                    },
+                    onStepCancel: () {
+                      if (_currentStep > 0) {
+                        setState(() => _currentStep--);
+                      } else {
+                        context.go('/panel');
+                      }
+                    },
+                    controlsBuilder: (context, details) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 24),
+                        child: Row(
+                          children: [
+                            FilledButton(
+                              onPressed: _isSubmitting ? null : details.onStepContinue,
+                              child: _isSubmitting
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : Text(_currentStep == 4 ? 'Publicar Carga en Tablero' : 'Siguiente Paso'),
+                            ),
+                            const SizedBox(width: 12),
+                            if (_currentStep > 0)
+                              OutlinedButton(
+                                onPressed: _isSubmitting ? null : details.onStepCancel,
+                                child: const Text('Anterior'),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                    steps: [
+                      _buildStep1(),
+                      _buildStep2(),
+                      _buildStep3(),
+                      _buildStep4(),
+                      _buildStep5(),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -213,63 +282,68 @@ class _PublishLoadScreenState extends ConsumerState<PublishLoadScreen> {
 
   Step _buildStep1() {
     return Step(
-      title: const Text('Paso 1: Origen y Destino'),
-      subtitle: const Text('Ubicaciones y fechas estimadas de recogida y entrega'),
+      title: const Text('Origen y Destino', style: TextStyle(fontWeight: FontWeight.w700)),
+      subtitle: const Text('Ruta de transporte y ventanas horarias estimadas'),
       isActive: _currentStep >= 0,
       state: _currentStep > 0 ? StepState.complete : StepState.indexed,
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Origen de Recogida', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
+          const Text('Ubicación de Origen', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: TextFormField(
                   controller: _originDeptController,
-                  decoration: const InputDecoration(labelText: 'Departamento origen *', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(labelText: 'Departamento origen *'),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: TextFormField(
                   controller: _originCityController,
-                  decoration: const InputDecoration(labelText: 'Ciudad origen *', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(labelText: 'Ciudad origen *'),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           TextFormField(
             controller: _originAddressController,
-            decoration: const InputDecoration(labelText: 'Dirección o punto de carga', border: OutlineInputBorder()),
+            decoration: const InputDecoration(
+              labelText: 'Dirección o punto de cargue',
+              prefixIcon: Icon(Icons.location_on_outlined),
+            ),
           ),
-          const SizedBox(height: 16),
-          const Divider(),
-          const SizedBox(height: 8),
-          const Text('Destino de Entrega', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 24),
+          const Text('Ubicación de Destino', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: TextFormField(
                   controller: _destDeptController,
-                  decoration: const InputDecoration(labelText: 'Departamento destino *', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(labelText: 'Departamento destino *'),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: TextFormField(
                   controller: _destCityController,
-                  decoration: const InputDecoration(labelText: 'Ciudad destino *', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(labelText: 'Ciudad destino *'),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           TextFormField(
             controller: _destAddressController,
-            decoration: const InputDecoration(labelText: 'Dirección o punto de descarga', border: OutlineInputBorder()),
+            decoration: const InputDecoration(
+              labelText: 'Dirección o punto de entrega',
+              prefixIcon: Icon(Icons.flag_outlined),
+            ),
           ),
         ],
       ),
@@ -278,15 +352,20 @@ class _PublishLoadScreenState extends ConsumerState<PublishLoadScreen> {
 
   Step _buildStep2() {
     return Step(
-      title: const Text('Paso 2: Mercancía'),
-      subtitle: const Text('Peso, volumen y requerimientos especiales'),
+      title: const Text('Detalles de la Mercancía', style: TextStyle(fontWeight: FontWeight.w700)),
+      subtitle: const Text('Tipo de producto, peso, empaque y refrigeración'),
       isActive: _currentStep >= 1,
       state: _currentStep > 1 ? StepState.complete : StepState.indexed,
       content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SizedBox(height: 8),
           TextFormField(
             controller: _productTypeController,
-            decoration: const InputDecoration(labelText: 'Tipo de producto *', border: OutlineInputBorder()),
+            decoration: const InputDecoration(
+              labelText: 'Tipo de producto / Descripción *',
+              prefixIcon: Icon(Icons.inventory_2_outlined),
+            ),
           ),
           const SizedBox(height: 12),
           Row(
@@ -295,15 +374,21 @@ class _PublishLoadScreenState extends ConsumerState<PublishLoadScreen> {
                 child: TextFormField(
                   controller: _weightController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Peso en kilogramos (Kg) *', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Peso total en Kg *',
+                    prefixIcon: Icon(Icons.scale_outlined),
+                  ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: TextFormField(
                   controller: _volumeController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Volumen aproximado (m³)', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Volumen estimado en m³',
+                    prefixIcon: Icon(Icons.view_in_ar_outlined),
+                  ),
                 ),
               ),
             ],
@@ -311,14 +396,18 @@ class _PublishLoadScreenState extends ConsumerState<PublishLoadScreen> {
           const SizedBox(height: 12),
           TextFormField(
             controller: _packagingController,
-            decoration: const InputDecoration(labelText: 'Tipo de embalaje (cajas, estibas, etc.)', border: OutlineInputBorder()),
+            decoration: const InputDecoration(
+              labelText: 'Tipo de embalaje (Estibas, Cajas, A granel)',
+              prefixIcon: Icon(Icons.all_inbox_outlined),
+            ),
           ),
           const SizedBox(height: 12),
           SwitchListTile(
-            title: const Text('Requiere refrigeración'),
-            subtitle: const Text('Activar si la carga es perecedera o requiere cadena de frío'),
+            title: const Text('¿Requiere cadena de frío / refrigeración?', style: TextStyle(fontSize: 13.5)),
             value: _requiresRefrigeration,
             onChanged: (val) => setState(() => _requiresRefrigeration = val),
+            activeThumbColor: AppColors.primary,
+            contentPadding: EdgeInsets.zero,
           ),
         ],
       ),
@@ -327,22 +416,30 @@ class _PublishLoadScreenState extends ConsumerState<PublishLoadScreen> {
 
   Step _buildStep3() {
     return Step(
-      title: const Text('Paso 3: Vehículo Requerido'),
-      subtitle: const Text('Clasificación y carrocería apta'),
+      title: const Text('Configuración del Vehículo', style: TextStyle(fontWeight: FontWeight.w700)),
+      subtitle: const Text('Tipología vehicular y carrocería requerida'),
       isActive: _currentStep >= 2,
       state: _currentStep > 2 ? StepState.complete : StepState.indexed,
       content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: _selectedVehicleType,
-            decoration: const InputDecoration(labelText: 'Tipo de vehículo *', border: OutlineInputBorder()),
+            initialValue: _selectedVehicleType,
+            decoration: const InputDecoration(
+              labelText: 'Tipo de vehículo requerido *',
+              prefixIcon: Icon(Icons.local_shipping_outlined),
+            ),
             items: _vehicleTypes.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
             onChanged: (val) => setState(() => _selectedVehicleType = val!),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           DropdownButtonFormField<String>(
-            value: _selectedBodyType,
-            decoration: const InputDecoration(labelText: 'Tipo de carrocería *', border: OutlineInputBorder()),
+            initialValue: _selectedBodyType,
+            decoration: const InputDecoration(
+              labelText: 'Tipo de carrocería requerida *',
+              prefixIcon: Icon(Icons.directions_bus_outlined),
+            ),
             items: _bodyTypes.map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
             onChanged: (val) => setState(() => _selectedBodyType = val!),
           ),
@@ -353,75 +450,58 @@ class _PublishLoadScreenState extends ConsumerState<PublishLoadScreen> {
 
   Step _buildStep4() {
     return Step(
-      title: const Text('Paso 4: Condiciones Económicas'),
-      subtitle: const Text('Flete ofrecido o solicitud de cotización'),
+      title: const Text('Condiciones Comerciales', style: TextStyle(fontWeight: FontWeight.w700)),
+      subtitle: const Text('Flete ofertado, pagador e instrucciones especiales'),
       isActive: _currentStep >= 3,
       state: _currentStep > 3 ? StepState.complete : StepState.indexed,
       content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
-                child: InkWell(
-                  onTap: () => setState(() => _pricingType = 'OFFERED'),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Row(
-                    children: [
-                      Radio<String>(
-                        value: 'OFFERED',
-                        groupValue: _pricingType,
-                        onChanged: (val) => setState(() => _pricingType = val!),
-                      ),
-                      const Expanded(child: Text('Valor ofrecido')),
-                    ],
-                  ),
+                child: DropdownButtonFormField<String>(
+                  initialValue: _pricingType,
+                  decoration: const InputDecoration(labelText: 'Modalidad de precio *'),
+                  items: const [
+                    DropdownMenuItem(value: 'OFFERED', child: Text('Precio Ofertado')),
+                    DropdownMenuItem(value: 'NEGOTIABLE', child: Text('A Convenir')),
+                  ],
+                  onChanged: (val) => setState(() => _pricingType = val!),
                 ),
               ),
+              const SizedBox(width: 14),
               Expanded(
-                child: InkWell(
-                  onTap: () => setState(() => _pricingType = 'QUOTE_REQUEST'),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Row(
-                    children: [
-                      Radio<String>(
-                        value: 'QUOTE_REQUEST',
-                        groupValue: _pricingType,
-                        onChanged: (val) => setState(() => _pricingType = val!),
-                      ),
-                      const Expanded(child: Text('A convenir / Cotización')),
-                    ],
+                child: TextFormField(
+                  controller: _priceController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Valor flete (COP) *',
+                    prefixText: '\$ ',
+                    prefixIcon: Icon(Icons.attach_money_rounded),
                   ),
                 ),
               ),
             ],
           ),
-          if (_pricingType == 'OFFERED') ...[
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _priceController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Valor sugerido flete (COP)', prefixText: '\$ ', border: OutlineInputBorder()),
-            ),
-          ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           DropdownButtonFormField<String>(
-            value: _payer,
-            decoration: const InputDecoration(labelText: '¿Quién asume el pago? *', border: OutlineInputBorder()),
+            initialValue: _payer,
+            decoration: const InputDecoration(labelText: 'Responsable del pago del flete *'),
             items: const [
-              DropdownMenuItem(value: 'REMITTENT', child: Text('Remitente (Empresa origen)')),
-              DropdownMenuItem(value: 'DESTINATARY', child: Text('Destinatario (Cliente entrega)')),
-              DropdownMenuItem(value: 'SPLIT', child: Text('Compartido / Mixto')),
+              DropdownMenuItem(value: 'REMITTENT', child: Text('Remitente (Al cargar)')),
+              DropdownMenuItem(value: 'CONSIGNEE', child: Text('Destinatario (Contra entrega)')),
             ],
             onChanged: (val) => setState(() => _payer = val!),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           TextFormField(
             controller: _instructionsController,
             maxLines: 3,
             decoration: const InputDecoration(
               labelText: 'Instrucciones especiales para el conductor',
-              hintText: 'Ej: Presentarse con EPP completos, carné de vacunas, sellos de seguridad.',
-              border: OutlineInputBorder(),
+              hintText: 'Ej: Presentar planilla ARL, uso obligatorio de botas y chaleco reflectivo.',
             ),
           ),
         ],
@@ -431,39 +511,52 @@ class _PublishLoadScreenState extends ConsumerState<PublishLoadScreen> {
 
   Step _buildStep5() {
     return Step(
-      title: const Text('Paso 5: Revisar y Publicar'),
-      subtitle: const Text('Verifica los datos antes de emitir la publicación'),
+      title: const Text('Resumen y Confirmación', style: TextStyle(fontWeight: FontWeight.w700)),
+      subtitle: const Text('Verificación final antes de publicar en la plataforma'),
       isActive: _currentStep >= 4,
       state: StepState.indexed,
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      content: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Resumen del Flete a Publicar',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            _SummaryRow('Trayecto:', '${_originCityController.text} → ${_destCityController.text}'),
+            _SummaryRow('Mercancía:', '${_productTypeController.text} (${_weightController.text} Kg)'),
+            _SummaryRow('Vehículo:', '$_selectedVehicleType ($_selectedBodyType)'),
+            _SummaryRow('Flete Estimado:', '\$ ${_priceController.text} COP'),
+            _SummaryRow('Pagador:', _payer == 'REMITTENT' ? 'Remitente' : 'Destinatario'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow(this.label, this.value);
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          if (_errorMessage != null)
-            Container(
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(color: Colors.red.shade100, borderRadius: BorderRadius.circular(8)),
-              child: Text(_errorMessage!, style: TextStyle(color: Colors.red.shade900)),
-            ),
-          Card(
-            elevation: 0,
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Ruta: ${_originCityController.text} (${_originDeptController.text}) ➔ ${_destCityController.text} (${_destDeptController.text})',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(height: 8),
-                  Text('Producto: ${_productTypeController.text} (${_weightController.text} Kg)'),
-                  Text('Vehículo: $_selectedVehicleType - $_selectedBodyType'),
-                  Text('Refrigeración: ${_requiresRefrigeration ? "Sí" : "No"}'),
-                  Text('Condición: ${_pricingType == "OFFERED" ? "Flete \$ ${_priceController.text} COP" : "Cotización abierta"}'),
-                ],
-              ),
-            ),
-          ),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: AppColors.primary)),
         ],
       ),
     );

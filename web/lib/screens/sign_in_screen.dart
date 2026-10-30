@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../auth/google_auth_client.dart';
 import '../state/app_providers.dart';
+import '../theme/app_colors.dart';
 import '../widgets/theme_mode_toggle.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
@@ -40,7 +42,6 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     }
   }
 
-
   Future<void> _signInWithGoogle() async {
     final idToken = await GoogleAuthClient.signIn();
     if (idToken == null) return;
@@ -52,120 +53,250 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final wide = MediaQuery.sizeOf(context).width >= 980;
 
-    final form = Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Qué bueno verte', style: theme.textTheme.headlineSmall),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Ingresa para continuar en TRAXIA.',
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 28),
-                  TextFormField(
-                    controller: _emailController,
-                    enabled: !auth.isSubmitting,
-                    keyboardType: TextInputType.emailAddress,
-                    autofillHints: const [AutofillHints.username, AutofillHints.email],
-                    decoration: const InputDecoration(
-                      labelText: 'Correo electrónico',
-                      prefixIcon: Icon(Icons.mail_outline),
-                    ),
-                    validator: (value) {
-                      final email = value?.trim() ?? '';
-                      if (email.isEmpty || !email.contains('@') || email.length > 254) {
-                        return 'Escribe un correo válido.';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _passwordController,
-                    enabled: !auth.isSubmitting,
-                    obscureText: true,
-                    autofillHints: const [AutofillHints.password],
-                    decoration: const InputDecoration(
-                      labelText: 'Contraseña',
-                      prefixIcon: Icon(Icons.lock_outline),
-                    ),
-                    validator: (value) {
-                      final password = value ?? '';
-                      if (password.isEmpty) {
-                        return 'Escribe tu contraseña.';
-                      }
-                      if (utf8.encode(password).length > 72) {
-                        return 'La contraseña supera el límite permitido.';
-                      }
-                      return null;
-                    },
-                    onFieldSubmitted: (_) => _submit(),
-                  ),
-                  if (auth.message != null) ...[
-                    const SizedBox(height: 16),
-                    _MessageBanner(message: auth.message!),
-                  ],
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: auth.isSubmitting ? null : _submit,
-                    child: auth.isSubmitting
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Iniciar sesión'),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Expanded(child: Divider()),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text('o', style: Theme.of(context).textTheme.bodySmall),
+    final formCard = ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 460),
+          decoration: BoxDecoration(
+            color: (isDark ? AppColors.darkSurface : Colors.white).withValues(alpha: isDark ? 0.85 : 0.95),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              width: 1,
+            ),
+            boxShadow: SaasDecoration.elevatedShadow(isDark),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 40),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header del formulario
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppColors.primary, AppColors.secondary],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.35),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      const Expanded(child: Divider()),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: auth.isSubmitting ? null : _signInWithGoogle,
-                    icon: const _GoogleLogo(),
-                    label: const Text('Continuar con Google'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: const Icon(Icons.local_shipping_rounded, color: Colors.white, size: 24),
                     ),
+                    const SizedBox(width: 14),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'TRAXIA',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w800,
+                            fontSize: 20,
+                            letterSpacing: -0.5,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        Text(
+                          'Logística Inteligente de Carga',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                Text(
+                  'Bienvenido de vuelta',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
                   ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Ingresa tus credenciales para acceder a tu consola operativa.',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 28),
+
+                // Campo Correo
+                Text(
+                  'Correo electrónico',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _emailController,
+                  enabled: !auth.isSubmitting,
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.username, AutofillHints.email],
+                  decoration: const InputDecoration(
+                    hintText: 'ejemplo@empresa.com',
+                    prefixIcon: Icon(Icons.mail_outline_rounded, size: 20),
+                  ),
+                  validator: (value) {
+                    final email = value?.trim() ?? '';
+                    if (email.isEmpty || !email.contains('@') || email.length > 254) {
+                      return 'Escribe un correo válido.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 18),
+
+                // Campo Contraseña
+                Text(
+                  'Contraseña',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _passwordController,
+                  enabled: !auth.isSubmitting,
+                  obscureText: true,
+                  autofillHints: const [AutofillHints.password],
+                  decoration: const InputDecoration(
+                    hintText: '••••••••',
+                    prefixIcon: Icon(Icons.lock_outline_rounded, size: 20),
+                  ),
+                  validator: (value) {
+                    final password = value ?? '';
+                    if (password.isEmpty) {
+                      return 'Escribe tu contraseña.';
+                    }
+                    if (utf8.encode(password).length > 72) {
+                      return 'La contraseña supera el límite permitido.';
+                    }
+                    return null;
+                  },
+                  onFieldSubmitted: (_) => _submit(),
+                ),
+
+                if (auth.message != null) ...[
                   const SizedBox(height: 20),
-                  Row(
+                  _MessageBanner(message: auth.message!),
+                ],
+
+                const SizedBox(height: 28),
+
+                // Botón Iniciar Sesión con estilo SaaS moderno
+                FilledButton(
+                  onPressed: auth.isSubmitting ? null : _submit,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: auth.isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('Iniciar sesión'),
+                            SizedBox(width: 8),
+                            Icon(Icons.arrow_forward_rounded, size: 18),
+                          ],
+                        ),
+                ),
+
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    const Expanded(child: Divider()),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Text(
+                        'O CONTINÚA CON',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.6,
+                          color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                        ),
+                      ),
+                    ),
+                    const Expanded(child: Divider()),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Botón Google Sign-In estilizado
+                OutlinedButton(
+                  onPressed: auth.isSubmitting ? null : _signInWithGoogle,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: isDark ? const Color(0xFF162035) : Colors.white,
+                  ),
+                  child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Flexible(child: Text('¿Aún no tienes cuenta?')),
-                      TextButton(
-                        onPressed: () => context.go('/crear-cuenta'),
-                        child: const Text('Conoce el registro'),
+                      _GoogleLogo(),
+                      SizedBox(width: 12),
+                      Text(
+                        'Google Workspace',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Acceso seguro. Nunca guardamos la contraseña en este navegador.',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
-              ),
+                ),
+
+                const SizedBox(height: 28),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '¿Aún no tienes cuenta?',
+                      style: TextStyle(
+                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      ),
+                      onPressed: () => context.go('/crear-cuenta'),
+                      child: const Text('Crear una cuenta'),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
@@ -173,141 +304,203 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     );
 
     return Scaffold(
-      appBar: AppBar(
-        title: const _Brand(),
-        actions: const [ThemeModeToggle(), SizedBox(width: 12)],
+      body: Stack(
+        children: [
+          // Fondo decorativo con gradiente moderno y luces sutiles
+          Positioned.fill(
+            child: Container(
+              color: isDark ? AppColors.darkBg : AppColors.lightBg,
+            ),
+          ),
+          Positioned(
+            top: -150,
+            left: -100,
+            child: Container(
+              width: 500,
+              height: 500,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary.withValues(alpha: isDark ? 0.12 : 0.08),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -150,
+            right: -100,
+            child: Container(
+              width: 550,
+              height: 550,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.secondary.withValues(alpha: isDark ? 0.10 : 0.07),
+              ),
+            ),
+          ),
+
+          // Selector de tema flotante arriba a la derecha
+          const Positioned(
+            top: 24,
+            right: 24,
+            child: ThemeModeToggle(),
+          ),
+
+          // Contenido principal responsive
+          Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: wide
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 480),
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 48),
+                            child: _BrandHeroPanel(isDark: isDark),
+                          ),
+                        ),
+                        formCard,
+                      ],
+                    )
+                  : formCard,
+            ),
+          ),
+        ],
       ),
-      body: SafeArea(
-        top: false,
-        child: wide
-            ? Row(
-                children: [
-                  const Expanded(child: _WelcomePanel()),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(32),
-                      child: form,
-                    ),
-                  ),
-                ],
-              )
-            : SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
-                child: Column(
-                  children: [
-                    if (MediaQuery.sizeOf(context).width >= 600) ...[
-                      const _CompactWelcome(),
-                      const SizedBox(height: 24),
-                    ],
-                    form,
-                  ],
+    );
+  }
+}
+
+class _BrandHeroPanel extends StatelessWidget {
+  const _BrandHeroPanel({required this.isDark});
+
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.25),
+            ),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.bolt_rounded, size: 16, color: AppColors.primary),
+              SizedBox(width: 6),
+              Text(
+                'Plataforma SaaS de Transporte y Fletes',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
                 ),
               ),
-      ),
-    );
-  }
-}
-
-class _WelcomePanel extends StatelessWidget {
-  const _WelcomePanel();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      margin: const EdgeInsets.fromLTRB(24, 12, 0, 24),
-      padding: const EdgeInsets.all(48),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            theme.colorScheme.primary,
-            Color.lerp(theme.colorScheme.primary, const Color(0xFF173A58), 0.72)!,
-          ],
+            ],
+          ),
         ),
-      ),
-      child: const _WelcomeContent(light: true),
-    );
-  }
-}
-
-class _CompactWelcome extends StatelessWidget {
-  const _CompactWelcome();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: _WelcomeContent(light: false),
-    );
-  }
-}
-
-class _WelcomeContent extends StatelessWidget {
-  const _WelcomeContent({required this.light});
-
-  final bool light;
-
-  @override
-  Widget build(BuildContext context) {
-    final foreground =
-        light ? Colors.white : Theme.of(context).colorScheme.onSurface;
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(Icons.route_rounded, size: 44, color: foreground),
-        const SizedBox(height: 28),
+        const SizedBox(height: 24),
         Text(
-          'El transporte,\nmejor conectado.',
-          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                color: foreground,
-                fontWeight: FontWeight.w800,
-                height: 1.1,
-              ),
+          'Conectamos generadores de carga, conductores y empresas legalizadoras.',
+          style: TextStyle(
+            fontSize: 34,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -1,
+            height: 1.2,
+            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+          ),
         ),
         const SizedBox(height: 18),
         Text(
-          'Un espacio para empresas que necesitan transportar, conductores y empresas legalizadoras.',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: foreground.withValues(alpha: 0.86),
-                height: 1.5,
-              ),
-        ),
-        const SizedBox(height: 32),
-        for (final item in const [
-          'Información clara en cada etapa',
-          'Acceso desde el navegador',
-          'Diseñado para trabajar en equipo',
-        ])
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                Icon(Icons.check_circle_outline, color: foreground, size: 20),
-                const SizedBox(width: 12),
-                Text(item, style: TextStyle(color: foreground)),
-              ],
-            ),
+          'Simulación de costos operativos en tiempo real con Gemelo Digital, monitoreo de fletes colombianos, subastas transparentes y trazabilidad integral del viaje.',
+          style: TextStyle(
+            fontSize: 15.5,
+            height: 1.6,
+            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
           ),
+        ),
+        const SizedBox(height: 36),
+        _FeatureBadge(
+          icon: Icons.calculate_rounded,
+          title: 'Gemelo Digital de Costos',
+          subtitle: 'Cálculo de ACPM (\$10.500 COP), peajes y desgaste por ruta.',
+          isDark: isDark,
+        ),
+        const SizedBox(height: 18),
+        _FeatureBadge(
+          icon: Icons.shield_rounded,
+          title: 'Seguridad y Cumplimiento',
+          subtitle: 'Validación de manifiestos, legalizaciones y firmas electrónicas.',
+          isDark: isDark,
+        ),
       ],
     );
   }
 }
 
-class _Brand extends StatelessWidget {
-  const _Brand();
+class _FeatureBadge extends StatelessWidget {
+  const _FeatureBadge({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.isDark,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.route_rounded, color: Theme.of(context).colorScheme.primary),
-        const SizedBox(width: 8),
-        const Text('TRAXIA', style: TextStyle(fontWeight: FontWeight.w800)),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+            ),
+            boxShadow: SaasDecoration.softShadow(isDark),
+          ),
+          child: Icon(icon, color: AppColors.primary, size: 20),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14.5,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -320,16 +513,29 @@ class _MessageBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: scheme.errorContainer,
+        color: AppColors.errorContainer.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
       ),
-      child: Text(
-        message,
-        style: TextStyle(color: scheme.onErrorContainer),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Color(0xFF991B1B),
+                fontSize: 13.5,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -340,22 +546,73 @@ class _GoogleLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 22,
-      height: 22,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.grey.shade300, width: 1),
-      ),
-      child: const Text(
-        'G',
-        style: TextStyle(
-          color: Color(0xFF4285F4),
-          fontWeight: FontWeight.w900,
-          fontSize: 15,
-        ),
-      ),
+    return SizedBox(
+      width: 18,
+      height: 18,
+      child: CustomPaint(painter: _GoogleLogoPainter()),
     );
   }
+}
+
+class _GoogleLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = size.width / 2;
+    final center = Offset(r, r);
+    final paint = Paint()..isAntiAlias = true;
+
+    // Azul
+    paint.color = const Color(0xFF4285F4);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: r),
+      -0.785,
+      1.57,
+      true,
+      paint,
+    );
+
+    // Verde
+    paint.color = const Color(0xFF34A853);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: r),
+      0.785,
+      1.57,
+      true,
+      paint,
+    );
+
+    // Amarillo
+    paint.color = const Color(0xFFFBBC05);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: r),
+      2.356,
+      1.57,
+      true,
+      paint,
+    );
+
+    // Rojo
+    paint.color = const Color(0xFFEA4335);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: r),
+      3.927,
+      1.57,
+      true,
+      paint,
+    );
+
+    // Centro blanco
+    paint.color = Colors.white;
+    canvas.drawCircle(center, r * 0.58, paint);
+
+    // Barra horizontal de la G
+    paint.color = const Color(0xFF4285F4);
+    canvas.drawRect(
+      Rect.fromLTWH(center.dx - 1, center.dy - r * 0.22, r * 1.05, r * 0.44),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
