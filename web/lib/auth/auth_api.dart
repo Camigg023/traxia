@@ -50,7 +50,7 @@ class AuthApi {
     return AuthResponse.fromJson(_requiredBody(response.data));
   }
 
-  Future<String> register({
+  Future<AuthResponse> register({
     required String displayName,
     required String email,
     required String password,
@@ -66,7 +66,7 @@ class AuthApi {
         'testNoticeAccepted': true,
       },
     );
-    return _requiredMessage(response.data);
+    return AuthResponse.fromJson(_requiredBody(response.data));
   }
 
   Future<String> verifyEmail(String token) async {
@@ -107,26 +107,12 @@ class AuthApi {
   }
 
   /// Intenta iniciar sesión con Google.
-  /// Si el correo no tiene cuenta en TRAXIA lanza [GoogleUserNotFoundException].
   Future<AuthResponse> googleSignIn({required String idToken}) async {
-    try {
-      final response = await _dio.post<Map<String, dynamic>>(
-        '$_authPath/google',
-        data: {'idToken': idToken},
-      );
-      return AuthResponse.fromJson(_requiredBody(response.data));
-    } on DioException catch (e) {
-      // El backend devuelve 404 con errorCode=GOOGLE_USER_NOT_FOUND
-      if (e.response?.statusCode == 404) {
-        final data = e.response?.data;
-        if (data is Map<String, dynamic> &&
-            data['errorCode'] == 'GOOGLE_USER_NOT_FOUND') {
-          final email = (data['email'] as String?) ?? '';
-          throw GoogleUserNotFoundException(email: email);
-        }
-      }
-      rethrow;
-    }
+    final response = await _dio.post<Map<String, dynamic>>(
+      '$_authPath/google',
+      data: {'idToken': idToken},
+    );
+    return AuthResponse.fromJson(_requiredBody(response.data));
   }
 
   /// Registra un usuario nuevo mediante Google con el perfil seleccionado.

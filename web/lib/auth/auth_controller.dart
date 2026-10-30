@@ -81,26 +81,51 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  Future<bool> register({
+    required String displayName,
+    required String email,
+    required String password,
+    required String profile,
+  }) async {
+    isSubmitting = true;
+    message = null;
+    notifyListeners();
+    try {
+      final response = await _api.register(
+        displayName: displayName,
+        email: email,
+        password: password,
+        profile: profile,
+      );
+      _setAuthenticated(response.accessToken, response.user);
+      return true;
+    } on DioException catch (exception) {
+      message = _api.messageFor(exception);
+      return false;
+    } on FormatException {
+      message = 'El servidor devolvió una respuesta no válida.';
+      return false;
+    } finally {
+      isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
   /// Intenta iniciar sesión con Google.
-  ///
-  /// Devuelve [GoogleSignInResult.success] si se autenticó correctamente.
-  /// Devuelve [GoogleSignInResult.notRegistered] si el correo de Google no
-  /// tiene cuenta en TRAXIA (el frontend debe redirigir a registro).
-  /// Devuelve [GoogleSignInResult.error] ante cualquier otro fallo.
-  Future<GoogleSignInResult> signInWithGoogle({required String idToken}) async {
+  Future<bool> signInWithGoogle({required String idToken}) async {
     isSubmitting = true;
     message = null;
     notifyListeners();
     try {
       final response = await _api.googleSignIn(idToken: idToken);
       _setAuthenticated(response.accessToken, response.user);
-      return GoogleSignInResult.success;
-    } on GoogleUserNotFoundException {
-      // El correo no está registrado → el frontend debe redirigir al registro
-      return GoogleSignInResult.notRegistered;
-    } on Exception catch (_) {
-      message = 'No fue posible iniciar sesión con Google. Inténtalo de nuevo.';
-      return GoogleSignInResult.error;
+      return true;
+    } on DioException catch (e) {
+      message = _api.messageFor(e);
+      return false;
+    } on Exception catch (e) {
+      message = 'No fue posible iniciar sesión con Google: $e';
+      return false;
     } finally {
       isSubmitting = false;
       notifyListeners();

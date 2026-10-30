@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -65,7 +64,6 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
   bool _testNoticeAccepted = false;
   bool _isSubmitting = false;
   String? _error;
-  String? _registeredEmail;
 
   bool get _isGoogleFlow => widget.googleIdToken != null;
 
@@ -81,50 +79,35 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
   Future<void> _submit() async {
     if (_isSubmitting || !_formKey.currentState!.validate()) return;
     final profile = _selectedProfile;
-    if (profile == null || !_testNoticeAccepted) return;
+    if (profile == null) {
+      setState(() => _error = 'Selecciona tu perfil de usuario para continuar.');
+      return;
+    }
+    if (!_testNoticeAccepted) {
+      setState(() => _error = 'Debes aceptar los términos del servicio.');
+      return;
+    }
 
     setState(() {
       _isSubmitting = true;
       _error = null;
     });
 
-    try {
-      if (_isGoogleFlow) {
-        // Registro con Google: no necesita contraseña, la cuenta queda activa inmediatamente
-        final ok = await ref.read(authControllerProvider).registerWithGoogle(
-              idToken: widget.googleIdToken!,
-              profile: profile.code,
-            );
-        if (mounted) {
-          if (ok) {
-            context.go('/panel'); // sesión iniciada directamente
-          } else {
-            setState(() => _error = ref.read(authControllerProvider).message ??
-                'No fue posible completar el registro con Google.');
-          }
-        }
+    final ok = await ref.read(authControllerProvider).register(
+          displayName: _nameController.text,
+          email: _emailController.text,
+          password: _passwordController.text,
+          profile: profile.code,
+        );
+
+    if (mounted) {
+      setState(() => _isSubmitting = false);
+      if (ok) {
+        context.go('/panel');
       } else {
-        // Registro tradicional con email y contraseña
-        await ref.read(authApiProvider).register(
-              displayName: _nameController.text,
-              email: _emailController.text,
-              password: _passwordController.text,
-              profile: profile.code,
-            );
-        if (mounted) {
-          setState(() => _registeredEmail = _emailController.text.trim());
-        }
+        setState(() => _error = ref.read(authControllerProvider).message ??
+            'No fue posible registrar la cuenta.');
       }
-    } on DioException catch (exception) {
-      if (mounted) {
-        setState(() => _error = ref.read(authApiProvider).messageFor(exception));
-      }
-    } on FormatException {
-      if (mounted) {
-        setState(() => _error = 'El servidor devolvió una respuesta no válida.');
-      }
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -148,9 +131,7 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 720),
-            child: _registeredEmail != null
-                ? _SuccessCard(email: _registeredEmail!, isDark: isDark)
-                : _RegistrationForm(
+            child: _RegistrationForm(
                     formKey: _formKey,
                     nameController: _nameController,
                     emailController: _emailController,
@@ -538,9 +519,7 @@ class _RegistrationForm extends StatelessWidget {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
-                  : Text(isGoogleFlow
-                      ? 'Activar cuenta con Google'
-                      : 'Completar Registro'),
+                  : const Text('Crear cuenta e ingresar'),
             ),
 
             const SizedBox(height: 16),
@@ -557,64 +536,4 @@ class _RegistrationForm extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Tarjeta de éxito (solo flujo email)
-// ─────────────────────────────────────────────────────────────────────────────
 
-class _SuccessCard extends StatelessWidget {
-  const _SuccessCard({required this.email, required this.isDark});
-
-  final String email;
-  final bool isDark;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-        ),
-        boxShadow: SaasDecoration.elevatedShadow(isDark),
-      ),
-      padding: const EdgeInsets.all(40),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: AppColors.successContainer,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.mark_email_read_rounded,
-                color: AppColors.success, size: 36),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            '¡Cuenta creada y activada con éxito!',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Tu cuenta para $email ha quedado activada en la plataforma. Ya puedes iniciar sesión directamente con tu correo y contraseña.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14.5,
-              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 32),
-          FilledButton.icon(
-            onPressed: () => context.go('/iniciar-sesion'),
-            icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-            label: const Text('Iniciar sesión ahora'),
-          ),
-        ],
-      ),
-    );
-  }
-}
