@@ -1,8 +1,21 @@
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+class GoogleAuthResult {
+  const GoogleAuthResult({
+    this.idToken,
+    this.errorMessage,
+    this.wasCancelled = false,
+  });
+
+  final String? idToken;
+  final String? errorMessage;
+  final bool wasCancelled;
+
+  bool get isSuccess => idToken != null && idToken!.isNotEmpty;
+}
+
 /// Cliente de autenticación con Google para Flutter Web.
-/// El Client ID se inyecta desde index.html mediante la meta tag
-/// "google-signin-client_id", por lo que no se necesita pasar aquí.
 class GoogleAuthClient {
   GoogleAuthClient._();
 
@@ -10,20 +23,38 @@ class GoogleAuthClient {
     scopes: ['email', 'profile'],
   );
 
-  /// Lanza el flujo de selección de cuenta de Google y devuelve
-  /// el ID Token de Google (JWT firmado por Google) listo para
-  /// enviarse al backend TRAXIA para su verificación.
-  ///
-  /// Devuelve `null` si el usuario cancela el flujo.
-  static Future<String?> signIn() async {
+  /// Lanza el flujo de selección de cuenta de Google.
+  static Future<GoogleAuthResult> signIn() async {
     try {
       final account = await _googleSignIn.signIn();
-      if (account == null) return null;
+      if (account == null) {
+        return const GoogleAuthResult(wasCancelled: true);
+      }
 
       final auth = await account.authentication;
-      return auth.idToken;
-    } catch (_) {
-      return null;
+      if (auth.idToken == null || auth.idToken!.isEmpty) {
+        return const GoogleAuthResult(
+          errorMessage: 'Google no devolvió el token de acceso. Intenta de nuevo.',
+        );
+      }
+
+      return GoogleAuthResult(idToken: auth.idToken);
+    } catch (e) {
+      debugPrint('Error en Google Sign-In: $e');
+      final errorStr = e.toString();
+      if (errorStr.contains('popup_closed_by_user')) {
+        return const GoogleAuthResult(wasCancelled: true);
+      }
+      if (errorStr.contains('idpiframe_initialization_failed') ||
+          errorStr.contains('origin')) {
+        return const GoogleAuthResult(
+          errorMessage:
+              'El dominio no está autorizado en Google Cloud Console. Agrega https://traxia-one.vercel.app en los Orígenes autorizados.',
+        );
+      }
+      return GoogleAuthResult(
+        errorMessage: 'No fue posible conectar con Google: $e',
+      );
     }
   }
 

@@ -168,7 +168,7 @@ class _Overview extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Gestiona fletes, monitorea ofertas en subasta, cotiza rutas con el Gemelo Digital y supervisa viajes en carretera con total seguridad.',
+                            'Gestiona fletes, monitorea ofertas en subasta, cotiza rutas con la calculadora de costos y supervisa viajes en carretera con total seguridad.',
                             style: TextStyle(
                               fontSize: 14.5,
                               color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
@@ -218,8 +218,8 @@ class _Overview extends StatelessWidget {
                       SizedBox(
                         width: kpiWidth,
                         child: _KpiCard(
-                          title: 'Costos y Peajes',
-                          value: 'Gemelo Digital',
+                          title: 'Estimación de Costos',
+                          value: 'Calculadora IA',
                           badge: 'Activo',
                           icon: Icons.calculate_rounded,
                           color: AppColors.secondary,

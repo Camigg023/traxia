@@ -350,7 +350,7 @@ class _LoadCard extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: onSimulate,
                 icon: const Icon(Icons.calculate_rounded, size: 18),
-                label: const Text('Simular Gemelo Digital y Ofertar'),
+                label: const Text('Calcular Costos y Ofertar'),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: AppColors.primary),
                   foregroundColor: AppColors.primary,
@@ -476,7 +476,7 @@ class _SimulationAndBidDialogState extends ConsumerState<_SimulationAndBidDialog
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Gemelo Digital & Oferta de Flete',
+                            'Cálculo de Costos y Oferta de Flete',
                             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                           ),
                           Text(

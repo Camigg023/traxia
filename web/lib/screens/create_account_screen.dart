@@ -594,12 +594,12 @@ class _SuccessCard extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           const Text(
-            '¡Cuenta creada con éxito!',
+            '¡Cuenta creada y activada con éxito!',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
           Text(
-            'Hemos enviado un enlace de confirmación a $email. Revisa tu bandeja de entrada o abre tu servicio de correo para activar tu cuenta antes de que expire en 30 minutos.',
+            'Tu cuenta para $email ha quedado activada en la plataforma. Ya puedes iniciar sesión directamente con tu correo y contraseña.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14.5,
@@ -611,7 +611,7 @@ class _SuccessCard extends StatelessWidget {
           FilledButton.icon(
             onPressed: () => context.go('/iniciar-sesion'),
             icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-            label: const Text('Ir al inicio de sesión'),
+            label: const Text('Iniciar sesión ahora'),
           ),
         ],
       ),

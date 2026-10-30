@@ -44,16 +44,20 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   }
 
   Future<void> _signInWithGoogle() async {
-    final idToken = await GoogleAuthClient.signIn();
-    if (idToken == null) return;
-    final result = await ref.read(authControllerProvider).signInWithGoogle(idToken: idToken);
+    final authResult = await GoogleAuthClient.signIn();
+    if (authResult.wasCancelled) return;
+    if (authResult.errorMessage != null) {
+      ref.read(authControllerProvider).setMessage(authResult.errorMessage!);
+      return;
+    }
+    final result = await ref.read(authControllerProvider).signInWithGoogle(idToken: authResult.idToken!);
     if (!mounted) return;
     switch (result) {
       case GoogleSignInResult.success:
         context.go('/panel');
       case GoogleSignInResult.notRegistered:
         // El correo de Google no está registrado: ir a crear cuenta con el idToken
-        context.go('/crear-cuenta', extra: idToken);
+        context.go('/crear-cuenta', extra: authResult.idToken);
       case GoogleSignInResult.error:
         // El mensaje de error ya está en authControllerProvider.message
         break;
@@ -432,7 +436,7 @@ class _BrandHeroPanel extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         Text(
-          'Simulación de costos operativos en tiempo real con Gemelo Digital, monitoreo de fletes colombianos, subastas transparentes y trazabilidad integral del viaje.',
+          'Calculadora de costos operativos en tiempo real, monitoreo de fletes colombianos, ofertas transparentes y seguimiento del viaje.',
           style: TextStyle(
             fontSize: 15.5,
             height: 1.6,
@@ -442,8 +446,8 @@ class _BrandHeroPanel extends StatelessWidget {
         const SizedBox(height: 36),
         _FeatureBadge(
           icon: Icons.calculate_rounded,
-          title: 'Gemelo Digital de Costos',
-          subtitle: 'Cálculo de ACPM (\$10.500 COP), peajes y desgaste por ruta.',
+          title: 'Calculadora de Costos y Peajes',
+          subtitle: 'Cálculo de ACPM (\$10.500 COP), peajes y desgaste por ruta en tiempo real.',
           isDark: isDark,
         ),
         const SizedBox(height: 18),

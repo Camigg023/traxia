@@ -139,6 +139,11 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setMessage(String msg) {
+    message = msg;
+    notifyListeners();
+  }
+
   void _setAuthenticated(String token, AuthUser authenticatedUser) {
     accessToken = token;
     user = authenticatedUser;
