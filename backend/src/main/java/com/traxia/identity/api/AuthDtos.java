@@ -30,7 +30,7 @@ public final class AuthDtos {
     public record RegisterRequest(
             @NotBlank @Size(min = 2, max = 120) String displayName,
             @NotBlank @Email @Size(max = 254) String email,
-            @NotBlank @Size(min = 16, max = 72) String password,
+            @NotBlank @Size(min = 8, max = 72) String password,
             @NotBlank @Pattern(regexp = "SHIPPER|DRIVER|LEGALIZER") String profile,
             @AssertTrue(message = "Debes aceptar el aviso local de prueba.")
             boolean testNoticeAccepted) {

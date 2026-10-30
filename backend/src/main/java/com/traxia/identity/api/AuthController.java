@@ -65,11 +65,12 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<AuthDtos.AuthResponse> register(
+            @Valid @RequestBody RegisterRequest request,
+            HttpServletRequest httpRequest) {
         registrationService.register(request);
-        return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body(new RegisterResponse(
-                        "Si el correo puede registrarse, recibirás un enlace de verificación en el correo local de pruebas."));
+        return authResponse(authService.login(
+                request.email(), request.password(), httpRequest.getRemoteAddr()));
     }
 
     @PostMapping("/verify-email")
@@ -80,7 +81,7 @@ public class AuthController {
 
     /**
      * Inicio de sesión con Google para cuentas ya registradas en TRAXIA.
-     * Si el correo no existe devuelve 404 con errorCode=GOOGLE_USER_NOT_FOUND.
+     * Si el correo no existe devuelve 404 indicando que debe registrarse.
      */
     @PostMapping("/google")
     public ResponseEntity<?> googleLogin(
@@ -89,10 +90,10 @@ public class AuthController {
             return authResponse(googleAuthService.authenticate(request.idToken()));
         } catch (GoogleAuthService.GoogleUserNotRegisteredException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new AuthDtos.GoogleUserNotFoundResponse(
-                            "GOOGLE_USER_NOT_FOUND",
-                            "Este correo de Google no tiene una cuenta en TRAXIA. Elige tu perfil para registrarte.",
-                            ex.getEmail()));
+                    .body(new AuthDtos.ApiProblem(
+                            "Usuario no registrado",
+                            HttpStatus.NOT_FOUND.value(),
+                            "Tu cuenta de Google (" + ex.getEmail() + ") no está registrada en TRAXIA. Debes crear una cuenta primero."));
         }
     }
 

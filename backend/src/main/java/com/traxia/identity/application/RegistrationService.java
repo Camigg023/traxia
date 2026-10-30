@@ -78,7 +78,7 @@ public class RegistrationService {
         String profile = request.profile().trim().toUpperCase(Locale.ROOT);
         String displayName = request.displayName().trim();
         if (!ALLOWED_PROFILES.contains(profile)
-                || request.password().codePointCount(0, request.password().length()) < 16
+                || request.password().codePointCount(0, request.password().length()) < 8
                 || request.password().getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new InvalidRegistrationException();
         }
