@@ -103,10 +103,88 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
     if (mounted) {
       setState(() => _isSubmitting = false);
       if (ok) {
-        context.go('/panel');
+        // Mostrar diálogo de bienvenida antes de ir al panel
+        final user = ref.read(authControllerProvider).user;
+        final displayName = _nameController.text.trim().split(' ').first;
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            contentPadding: const EdgeInsets.fromLTRB(32, 28, 32, 24),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [AppColors.primary, AppColors.secondary],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: const Icon(Icons.check_rounded, color: Colors.white, size: 38),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  '¡Bienvenido a TRAXIA, $displayName!',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Tu cuenta ha sido creada y activada.\nEstás listo para operar en la plataforma.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                    },
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Ir a mi consola', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                        SizedBox(width: 8),
+                        Icon(Icons.arrow_forward_rounded, size: 18),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+        if (mounted) context.go('/panel');
       } else {
-        setState(() => _error = ref.read(authControllerProvider).message ??
-            'No fue posible registrar la cuenta.');
+        final errMsg = ref.read(authControllerProvider).message ?? 'No fue posible registrar la cuenta.';
+        // Detectar correo ya registrado
+        final isAlreadyRegistered = errMsg.toLowerCase().contains('ya tiene una cuenta') ||
+            errMsg.toLowerCase().contains('inicia sesión') ||
+            errMsg.toLowerCase().contains('correo ya registrado');
+        if (isAlreadyRegistered) {
+          setState(() => _error =
+              'Este correo ya tiene una cuenta en TRAXIA. Inicia sesión directamente.');
+        } else {
+          setState(() => _error = errMsg);
+        }
       }
     }
   }
@@ -486,39 +564,38 @@ class _RegistrationForm extends StatelessWidget {
             if (error != null) ...[
               const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: AppColors.errorContainer,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
+                        const Icon(Icons.info_outline_rounded, color: AppColors.error, size: 20),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             error!,
-                            style: const TextStyle(color: Color(0xFF991B1B), fontSize: 13),
+                            style: const TextStyle(color: Color(0xFF991B1B), fontSize: 13.5, height: 1.4),
                           ),
                         ),
                       ],
                     ),
                     if (error!.toLowerCase().contains('inicia sesión') ||
-                        error!.toLowerCase().contains('ya tiene una cuenta')) ...[
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          onPressed: () => context.go('/iniciar-sesion'),
-                          icon: const Icon(Icons.login_rounded, size: 16),
-                          label: const Text('Ir a Iniciar Sesión'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFF991B1B),
-                            textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                          ),
+                        error!.toLowerCase().contains('ya tiene una cuenta') ||
+                        error!.toLowerCase().contains('ya registrad')) ...[
+                      const SizedBox(height: 10),
+                      FilledButton.icon(
+                        onPressed: () => context.go('/iniciar-sesion'),
+                        icon: const Icon(Icons.login_rounded, size: 18),
+                        label: const Text('Ir a Iniciar Sesión'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF991B1B),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
                         ),
                       ),
                     ],

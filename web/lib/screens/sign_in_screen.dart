@@ -517,30 +517,64 @@ class _MessageBanner extends StatelessWidget {
 
   final String message;
 
+  // Detecta si el mensaje indica que la cuenta de Google no está registrada
+  bool get _isNotRegistered =>
+      message.toLowerCase().contains('no está registrada') ||
+      message.toLowerCase().contains('no registrada') ||
+      message.toLowerCase().contains('debes crear una cuenta');
+
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.errorContainer.withValues(alpha: 0.8),
+        color: _isNotRegistered
+            ? const Color(0xFFFFF7ED)
+            : AppColors.errorContainer.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: _isNotRegistered
+              ? const Color(0xFFF97316).withValues(alpha: 0.4)
+              : AppColors.error.withValues(alpha: 0.3),
+        ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: Color(0xFF991B1B),
-                fontSize: 13.5,
-                fontWeight: FontWeight.w500,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                _isNotRegistered ? Icons.person_off_outlined : Icons.error_outline_rounded,
+                color: _isNotRegistered ? const Color(0xFFF97316) : AppColors.error,
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message,
+                  style: TextStyle(
+                    color: _isNotRegistered ? const Color(0xFF9A3412) : const Color(0xFF991B1B),
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_isNotRegistered) ...[
+            const SizedBox(height: 10),
+            FilledButton.icon(
+              onPressed: () => GoRouter.of(context).go('/crear-cuenta'),
+              icon: const Icon(Icons.person_add_rounded, size: 18),
+              label: const Text('Crear mi cuenta en TRAXIA'),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFF97316),
+                padding: const EdgeInsets.symmetric(vertical: 10),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
