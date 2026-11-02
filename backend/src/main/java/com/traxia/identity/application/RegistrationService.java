@@ -29,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class RegistrationService {
 
     private static final Set<String> ALLOWED_ENVIRONMENTS =
-            Set.of("local", "development", "dev", "test", "production");
+            Set.of("local", "development", "dev", "test");
     private static final Set<String> ALLOWED_PROFILES =
             Set.of("SHIPPER", "DRIVER", "LEGALIZER");
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -45,6 +45,7 @@ public class RegistrationService {
     private final String appEnvironment;
     private final String testNoticeVersion;
     private final long verificationTtlMinutes;
+    private final boolean autoActivate;
 
     public RegistrationService(
             UserRepository userRepository,
@@ -58,6 +59,25 @@ public class RegistrationService {
             @Value("${APP_ENV:local}") String appEnvironment,
             @Value("${traxia.registration.test-notice-version}") String testNoticeVersion,
             @Value("${traxia.registration.verification-ttl-minutes}") long verificationTtlMinutes) {
+        this(userRepository, authMethodRepository, noticeRepository, tokenRepository,
+                passwordEncoder, auditService, emailSender, registrationEnabled, appEnvironment,
+                testNoticeVersion, verificationTtlMinutes, false);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public RegistrationService(
+            UserRepository userRepository,
+            AuthMethodRepository authMethodRepository,
+            RegistrationNoticeAcceptanceRepository noticeRepository,
+            EmailVerificationTokenRepository tokenRepository,
+            PasswordEncoder passwordEncoder,
+            AuditService auditService,
+            RegistrationEmailSender emailSender,
+            @Value("${traxia.registration.enabled}") boolean registrationEnabled,
+            @Value("${APP_ENV:local}") String appEnvironment,
+            @Value("${traxia.registration.test-notice-version}") String testNoticeVersion,
+            @Value("${traxia.registration.verification-ttl-minutes}") long verificationTtlMinutes,
+            @Value("${traxia.registration.auto-activate:true}") boolean autoActivate) {
         this.userRepository = userRepository;
         this.authMethodRepository = authMethodRepository;
         this.noticeRepository = noticeRepository;
@@ -69,6 +89,7 @@ public class RegistrationService {
         this.appEnvironment = appEnvironment.trim().toLowerCase(Locale.ROOT);
         this.testNoticeVersion = testNoticeVersion;
         this.verificationTtlMinutes = verificationTtlMinutes;
+        this.autoActivate = autoActivate;
     }
 
     @Transactional
@@ -92,11 +113,14 @@ public class RegistrationService {
         String passwordHash = passwordEncoder.encode(request.password());
         AuthMethodEntity authMethod = authMethodRepository.save(
                 AuthMethodEntity.pendingEmailPassword(user, passwordHash, now));
-        user.getAuthMethods().add(authMethod);
+        if (user != null && user.getAuthMethods() != null) {
+            user.getAuthMethods().add(authMethod);
+        }
 
-        // Auto-activar cuenta para que el usuario pueda ingresar de inmediato sin bloqueo
-        user.verifyEmail(now);
-        authMethod.verify(now);
+        if (autoActivate && user != null && authMethod != null) {
+            user.verifyEmail(now);
+            authMethod.verify(now);
+        }
 
         noticeRepository.save(new RegistrationNoticeAcceptanceEntity(
                 user, testNoticeVersion, now));
@@ -107,7 +131,7 @@ public class RegistrationService {
                 hashToken(rawToken),
                 now.plus(verificationTtlMinutes, ChronoUnit.MINUTES),
                 now));
-        auditService.record(user, "AUTH_REGISTER", "USER", user.getPublicId(), "SUCCESS");
+        auditService.record(user, "AUTH_REGISTER", "USER", user != null ? user.getPublicId() : null, "SUCCESS");
 
         try {
             emailSender.sendVerification(email, displayName, rawToken);
@@ -134,6 +158,11 @@ public class RegistrationService {
 
         token.consume(now);
         user.verifyEmail(now);
+        if (user.getAuthMethods() != null) {
+            user.getAuthMethods().stream()
+                    .filter(method -> "EMAIL".equals(method.getProviderCode()) || "PASSWORD".equals(method.getProviderCode()))
+                    .forEach(method -> method.verify(now));
+        }
         auditService.record(user, "AUTH_EMAIL_VERIFIED", "USER", user.getPublicId(), "SUCCESS");
     }
 

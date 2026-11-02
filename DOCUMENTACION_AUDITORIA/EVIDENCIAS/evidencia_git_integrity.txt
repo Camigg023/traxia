@@ -1,0 +1,7 @@
+﻿=== GIT STATUS & IDENTITY ===
+Remote: origin	https://github.com/Camigg023/traxia (fetch)
+origin	https://github.com/Camigg023/traxia (push)
+
+Branch: main
+Latest Commit: commit f747b488f792ccc4e4d18d82b0a1a50b509898b5 Author:     Camila Gómez <camii7312@gmail.com> AuthorDate: Fri Oct 30 15:01:46 2026 -0500 Commit:     Camila Gómez <camii7312@gmail.com> CommitDate: Fri Oct 30 15:01:46 2026 -0500      feat(ux): bienvenida en registro, error claro de Google no registrado con CTA crear cuenta, y correo duplicado con CTA login
+Clean Tree Status:  M backend/src/main/java/com/traxia/identity/api/AuthController.java  M backend/src/main/java/com/traxia/identity/application/RegistrationService.java  M backend/src/test/java/com/traxia/identity/application/RegistrationServiceTest.java  M web/build/flutter_assets/NOTICES  M web/lib/screens/create_account_screen.dart ?? web/build/5d3090f17e74199b3d7cc231d67c489d.cache.dill.track.dill ?? web/build/8a535d45eeff414e4f00eed58e15b7aa/

@@ -40,7 +40,7 @@ public class AuthController {
     private final String cookieName;
     private final boolean cookieSecure;
     private static final Set<String> NON_PRODUCTION_ENVIRONMENTS =
-            Set.of("local", "development", "dev", "test", "production");
+            Set.of("local", "development", "dev", "test");
 
     public AuthController(
             AuthService authService,

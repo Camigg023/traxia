@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../loads/bids_trips_models.dart';
@@ -436,8 +437,17 @@ class _SimulationAndBidDialogState extends ConsumerState<_SimulationAndBidDialog
       }
     } catch (e) {
       if (mounted) {
+        String msg = '$e';
+        if (e is DioException && e.response?.data is Map) {
+          final data = e.response!.data as Map;
+          if (data['detail'] != null) {
+            msg = data['detail'].toString();
+          } else if (data['message'] != null) {
+            msg = data['message'].toString();
+          }
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al ofertar: $e'), backgroundColor: AppColors.error),
+          SnackBar(content: Text('Error al ofertar: $msg'), backgroundColor: AppColors.error),
         );
       }
     } finally {

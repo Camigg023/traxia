@@ -97,9 +97,12 @@ class RegistrationServiceTest {
                 mock(EmailVerificationTokenRepository.class),
                 mock(PasswordEncoder.class), mock(AuditService.class), emailSender, true, "local");
 
-        service.register(new RegisterRequest(
+        RegisterRequest request = new RegisterRequest(
                 "Persona de prueba", "persona@example.test",
-                "Una-clave-de-prueba-de-16", "DRIVER", true));
+                "Una-clave-de-prueba-de-16", "DRIVER", true);
+
+        assertThatThrownBy(() -> service.register(request))
+                .isInstanceOf(RegistrationService.EmailAlreadyRegisteredException.class);
 
         verify(users, never()).save(any());
         verify(emailSender, never()).sendVerification(any(), any(), any());

@@ -1,0 +1,14 @@
+﻿{
+    "originCity":  "Bogota",
+    "destinationCity":  "Medellin",
+    "vehicleType":  "Sencillo",
+    "estimatedDistanceKm":  420,
+    "estimatedTollsCount":  5,
+    "estimatedTollsCostCop":  72500.00,
+    "estimatedFuelGallons":  35.00,
+    "estimatedFuelCostCop":  367500.00,
+    "estimatedDirectCostCop":  440000.00,
+    "suggestedBaseFreightCop":  638000.00,
+    "dataSource":  "Simulador LogÃ­stico TRAXIA - ParÃ¡metros Colombia 2026",
+    "disclaimer":  "EstimaciÃ³n referencial no vinculante basada en promedios de rutas nacionales. Los costos reales pueden variar segÃºn condiciones viales y paradas intermedias."
+}

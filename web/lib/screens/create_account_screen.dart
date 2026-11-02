@@ -104,7 +104,6 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
       setState(() => _isSubmitting = false);
       if (ok) {
         // Mostrar diálogo de bienvenida antes de ir al panel
-        final user = ref.read(authControllerProvider).user;
         final displayName = _nameController.text.trim().split(' ').first;
         await showDialog<void>(
           context: context,

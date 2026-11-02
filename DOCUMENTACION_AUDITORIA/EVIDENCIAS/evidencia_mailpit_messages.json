@@ -1,0 +1,100 @@
+﻿{
+    "total":  3,
+    "unread":  2,
+    "count":  3,
+    "messages_count":  3,
+    "messages_unread":  2,
+    "start":  0,
+    "tags":  [
+
+             ],
+    "messages":  [
+                     {
+                         "ID":  "3stapCK7ATBKbEzflH4jvr",
+                         "MessageID":  "310577795.2.1793652578532@host.docker.internal",
+                         "Read":  false,
+                         "From":  {
+                                      "Name":  "",
+                                      "Address":  "noreply@traxia.local"
+                                  },
+                         "To":  [
+                                    {
+                                        "Name":  "",
+                                        "Address":  "conductor2@traxia.local"
+                                    }
+                                ],
+                         "Cc":  null,
+                         "Bcc":  null,
+                         "ReplyTo":  [
+
+                                     ],
+                         "Subject":  "Verifica tu correo de TRAXIA (prueba local)",
+                         "Created":  "2026-11-02T15:49:38.536-05:00",
+                         "Username":  "",
+                         "Tags":  [
+
+                                  ],
+                         "Size":  872,
+                         "Attachments":  0,
+                         "Snippet":  "Hola, Andres Transportador. Para verificar este correo de prueba, abre: http://localhost:5000/verificar-correo?token=VAx0hZ2R3Xbvz6psvj-dOzhSGw307GtTqfDhmqgNm64 El enlace vence en 30 minutos. Si no so..."
+                     },
+                     {
+                         "ID":  "4ENkuCpucERoQN6Iy4nXPm",
+                         "MessageID":  "1366091400.1.1793652383280@host.docker.internal",
+                         "Read":  false,
+                         "From":  {
+                                      "Name":  "",
+                                      "Address":  "noreply@traxia.local"
+                                  },
+                         "To":  [
+                                    {
+                                        "Name":  "",
+                                        "Address":  "conductor.bogota@traxia.local"
+                                    }
+                                ],
+                         "Cc":  null,
+                         "Bcc":  null,
+                         "ReplyTo":  [
+
+                                     ],
+                         "Subject":  "Verifica tu correo de TRAXIA (prueba local)",
+                         "Created":  "2026-11-02T15:46:23.283-05:00",
+                         "Username":  "",
+                         "Tags":  [
+
+                                  ],
+                         "Size":  881,
+                         "Attachments":  0,
+                         "Snippet":  "Hola, Carlos Conductor. Para verificar este correo de prueba, abre: http://localhost:5000/verificar-correo?token=Z24F8fTv9zG6sAKzdA1Ip1rcoAJibZEpm_H9g-mblvc El enlace vence en 30 minutos. Si no solici..."
+                     },
+                     {
+                         "ID":  "3mcr7kcFSAokGv4sByEK8j",
+                         "MessageID":  "1030761418.0.1793651433740@host.docker.internal",
+                         "Read":  true,
+                         "From":  {
+                                      "Name":  "",
+                                      "Address":  "noreply@traxia.local"
+                                  },
+                         "To":  [
+                                    {
+                                        "Name":  "",
+                                        "Address":  "empresa.colombia@traxia.local"
+                                    }
+                                ],
+                         "Cc":  null,
+                         "Bcc":  null,
+                         "ReplyTo":  [
+
+                                     ],
+                         "Subject":  "Verifica tu correo de TRAXIA (prueba local)",
+                         "Created":  "2026-11-02T15:30:33.762-05:00",
+                         "Username":  "",
+                         "Tags":  [
+
+                                  ],
+                         "Size":  889,
+                         "Attachments":  0,
+                         "Snippet":  "Hola, Transportes Colombia SAS. Para verificar este correo de prueba, abre: http://localhost:5000/verificar-correo?token=dmUZxoZHyGI0upbhkLUXkuJnzJhPOREzBCxLt8JtCgA El enlace vence en 30 minutos. Si n..."
+                     }
+                 ]
+}
