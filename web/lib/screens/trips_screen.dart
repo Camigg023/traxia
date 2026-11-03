@@ -489,7 +489,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                             )
                           : _selectedTabIndex == 0
                               ? _buildBidsTab(isDark, currentUserEmail)
-                              : _buildTripsTab(isDark),
+                              : _buildTripsTab(isDark, currentUserEmail),
                 ),
               ],
             ),
@@ -576,7 +576,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     );
   }
 
-  Widget _buildTripsTab(bool isDark) {
+  Widget _buildTripsTab(bool isDark, String currentUserEmail) {
     if (_trips.isEmpty) {
       return Center(
         child: Column(
@@ -621,10 +621,12 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
       itemBuilder: (ctx, i) {
         final trip = _trips[i];
         final load = _loadDetails[trip.loadId];
+        final isDriver = trip.driverEmail == currentUserEmail;
 
         return _TripCard(
           trip: trip,
           load: load,
+          isDriver: isDriver,
           onStart: () => _startTrip(trip),
           onDeliver: () => _deliverTrip(trip),
           onViewMap: () {
@@ -960,6 +962,7 @@ class _TripCard extends StatelessWidget {
   const _TripCard({
     required this.trip,
     required this.load,
+    required this.isDriver,
     required this.onStart,
     required this.onDeliver,
     required this.onViewMap,
@@ -968,6 +971,7 @@ class _TripCard extends StatelessWidget {
 
   final TripModel trip;
   final LoadModel? load;
+  final bool isDriver;
   final VoidCallback onStart;
   final VoidCallback onDeliver;
   final VoidCallback onViewMap;
@@ -1071,6 +1075,35 @@ class _TripCard extends StatelessWidget {
             ),
           ],
 
+          const SizedBox(height: 12),
+
+          // Información del Conductor / Empresa en la tarjeta
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF162035) : AppColors.lightSurfaceSubtle,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isDriver ? Icons.badge_rounded : Icons.person_pin_circle_rounded,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isDriver
+                        ? 'Estás conduciendo este flete como Transportista asignado.'
+                        : 'Conductor asignado: ${trip.driverName.isNotEmpty ? trip.driverName : trip.driverEmail} (⭐⭐⭐⭐⭐ 4.9)',
+                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           if (trip.deliveryProofNotes != null) ...[
             const SizedBox(height: 12),
             Container(
@@ -1110,26 +1143,75 @@ class _TripCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              if (trip.status == 'ASSIGNED')
-                FilledButton.icon(
-                  onPressed: onStart,
-                  icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                  label: const Text('Iniciar Ruta (En Tránsito)'),
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-                ),
-              if (isInTransit)
-                FilledButton.icon(
-                  onPressed: onDeliver,
-                  icon: const Icon(Icons.task_alt_rounded, size: 18),
-                  label: const Text('Confirmar Entrega y Acta'),
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.success),
-                ),
-              if (isDelivered)
-                OutlinedButton.icon(
-                  onPressed: null,
-                  icon: const Icon(Icons.verified_rounded, size: 18, color: AppColors.success),
-                  label: const Text('Completado y Legalizado'),
-                ),
+              if (isDriver) ...[
+                if (trip.status == 'ASSIGNED')
+                  FilledButton.icon(
+                    onPressed: onStart,
+                    icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                    label: const Text('Iniciar Ruta (En Tránsito)'),
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                  ),
+                if (isInTransit)
+                  FilledButton.icon(
+                    onPressed: onDeliver,
+                    icon: const Icon(Icons.task_alt_rounded, size: 18),
+                    label: const Text('Confirmar Entrega y Acta'),
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.success),
+                  ),
+                if (isDelivered)
+                  OutlinedButton.icon(
+                    onPressed: null,
+                    icon: const Icon(Icons.verified_rounded, size: 18, color: AppColors.success),
+                    label: const Text('Completado y Legalizado'),
+                  ),
+              ] else ...[
+                if (trip.status == 'ASSIGNED')
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.hourglass_top_rounded, size: 16, color: Colors.amber),
+                        SizedBox(width: 6),
+                        Text(
+                          'Esperando que el conductor inicie la ruta',
+                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.amber),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (isInTransit)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.local_shipping_rounded, size: 16, color: AppColors.primary),
+                        SizedBox(width: 6),
+                        Text(
+                          'Camión en carretera (En Tránsito)',
+                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.primary),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (isDelivered)
+                  OutlinedButton.icon(
+                    onPressed: null,
+                    icon: const Icon(Icons.verified_rounded, size: 18, color: AppColors.success),
+                    label: const Text('Entrega Recibida a Satisfacción'),
+                  ),
+              ],
             ],
           ),
         ],
