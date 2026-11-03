@@ -108,11 +108,15 @@ class _TraxiaAppState extends ConsumerState<TraxiaApp> {
         ),
         GoRoute(
           path: '/viajes',
-          builder: (context, state) => const TripsScreen(),
+          builder: (context, state) => TripsScreen(
+            initialTab: state.uri.queryParameters['tab'],
+          ),
         ),
         GoRoute(
           path: '/trips',
-          builder: (context, state) => const TripsScreen(),
+          builder: (context, state) => TripsScreen(
+            initialTab: state.uri.queryParameters['tab'],
+          ),
         ),
       ],
     );

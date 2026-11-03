@@ -72,6 +72,18 @@ class TripsApi {
         .toList();
   }
 
+  Future<List<BidModel>> getMyBids({required String accessToken}) async {
+    final response = await _dio.get<List<dynamic>>(
+      '/api/v1/bids/my',
+      options: Options(
+        headers: {'Authorization': 'Bearer $accessToken'},
+      ),
+    );
+    return (response.data ?? [])
+        .map((item) => BidModel.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<TripModel> acceptBid({
     required String bidId,
     required String accessToken,

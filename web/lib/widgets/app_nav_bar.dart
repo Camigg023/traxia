@@ -12,6 +12,7 @@ enum AppNavSection {
   publishLoad,
   loads,
   trips,
+  bids,
   account,
 }
 
@@ -183,10 +184,17 @@ class AppNavBar extends ConsumerWidget implements PreferredSizeWidget {
                   ),
                   const SizedBox(width: 4),
                   _DesktopNavLink(
+                    icon: Icons.local_offer_rounded,
+                    label: 'Viajes Ofertados',
+                    isActive: currentSection == AppNavSection.bids,
+                    onTap: () => context.go('/viajes?tab=ofertas'),
+                  ),
+                  const SizedBox(width: 4),
+                  _DesktopNavLink(
                     icon: Icons.route_rounded,
                     label: 'Mis Viajes',
                     isActive: currentSection == AppNavSection.trips,
-                    onTap: () => context.go('/viajes'),
+                    onTap: () => context.go('/viajes?tab=activos'),
                   ),
                 ],
 
@@ -273,12 +281,21 @@ class AppNavBar extends ConsumerWidget implements PreferredSizeWidget {
                 },
               ),
               _MobileMenuItem(
+                icon: Icons.local_offer_rounded,
+                label: 'Viajes Ofertados',
+                isActive: currentSection == AppNavSection.bids,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.go('/viajes?tab=ofertas');
+                },
+              ),
+              _MobileMenuItem(
                 icon: Icons.route_rounded,
                 label: 'Mis Viajes Activos',
                 isActive: currentSection == AppNavSection.trips,
                 onTap: () {
                   Navigator.pop(ctx);
-                  context.go('/viajes');
+                  context.go('/viajes?tab=activos');
                 },
               ),
               const SizedBox(height: 16),
