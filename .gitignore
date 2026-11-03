@@ -164,9 +164,8 @@ vite.config.ts.timestamp-*
 **/.dart_tool/
 **/.flutter-plugins
 **/.flutter-plugins-dependencies
-**/build/
-!web/build/
-!web/build/web/**
+web/build/*
+!web/build/web/
 **/coverage/
 
 cloudflared.exe
