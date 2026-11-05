@@ -1,4 +1,4 @@
-services:
+﻿services:
   - type: web
     name: traxia-backend
     runtime: docker
@@ -31,6 +31,8 @@ services:
         value: 889356702185-0pqo4fj9gmp5tqqcltdli9ketkvep2me.apps.googleusercontent.com
       - key: WEB_ALLOWED_ORIGINS
         value: "http://localhost:5000,https://*.vercel.app"
+      - key: JWT_ACCESS_TTL_SECONDS
+        value: "86400"
       - key: REFRESH_COOKIE_SECURE
         value: "false"
       - key: TRAXIA_REGISTRATION_ENABLED

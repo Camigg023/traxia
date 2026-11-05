@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../auth/google_auth_client.dart';
+import '../auth/local_storage_stub.dart'
+    if (dart.library.js_interop) '../auth/local_storage_web.dart';
 import '../state/app_providers.dart';
 import '../theme/app_colors.dart';
 import '../widgets/theme_mode_toggle.dart';
@@ -21,6 +23,38 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _rememberMe = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  void _loadSavedCredentials() {
+    try {
+      final savedEmail = getSavedValue('traxia_last_email');
+      final savedPass = getSavedValue('traxia_last_pass');
+      final rememberFlag = getSavedValue('traxia_remember_me');
+
+      if (savedEmail != null && savedEmail.isNotEmpty) {
+        _emailController.text = savedEmail;
+      }
+      if (savedPass != null && savedPass.isNotEmpty) {
+        _passwordController.text = savedPass;
+      }
+      if (rememberFlag != null) {
+        _rememberMe = rememberFlag == 'true';
+      }
+    } catch (_) {}
+  }
+
+  void _fillAccount(String email, String password) {
+    setState(() {
+      _emailController.text = email;
+      _passwordController.text = password;
+    });
+  }
 
   @override
   void dispose() {
@@ -33,9 +67,23 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (_rememberMe) {
+      saveValue('traxia_last_email', email);
+      saveValue('traxia_last_pass', password);
+      saveValue('traxia_remember_me', 'true');
+    } else {
+      saveValue('traxia_last_email', '');
+      saveValue('traxia_last_pass', '');
+      saveValue('traxia_remember_me', 'false');
+    }
+
     final authenticated = await ref.read(authControllerProvider).signIn(
-          email: _emailController.text,
-          password: _passwordController.text,
+          email: email,
+          password: password,
         );
     if (authenticated && mounted) {
       context.go('/panel');
@@ -82,9 +130,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
               children: [
-                // Header del formulario
                 Row(
                   children: [
                     Container(
@@ -105,7 +151,11 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.local_shipping_rounded, color: Colors.white, size: 24),
+                      child: const Icon(
+                        Icons.local_shipping_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Column(
@@ -113,16 +163,14 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       children: [
                         Text(
                           'TRAXIA',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
+                          style: theme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w800,
-                            fontSize: 20,
                             letterSpacing: -0.5,
                             color: theme.colorScheme.onSurface,
                           ),
                         ),
                         Text(
-                          'Logística Inteligente de Carga',
+                          'Logistica Inteligente de Carga',
                           style: TextStyle(
                             fontSize: 12,
                             color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
@@ -133,7 +181,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 28),
                 Text(
                   'Bienvenido de vuelta',
                   style: theme.textTheme.headlineSmall?.copyWith(
@@ -145,11 +193,67 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   'Ingresa tus credenciales para acceder a tu consola operativa.',
                   style: theme.textTheme.bodyMedium,
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 20),
+
+                // Accesos rapidos para pruebas (Conductor y Empresa)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF162035) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.bolt_rounded, size: 16, color: Colors.amber.shade700),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Cuentas rapidas de prueba (1 Clic):',
+                            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _fillAccount('conductor.bogota@traxia.local', 'SecurePassword2026*'),
+                              icon: const Icon(Icons.drive_eta_rounded, size: 14),
+                              label: const Text('Conductor', style: TextStyle(fontSize: 11.5)),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                                side: BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _fillAccount('empresa.colombia@traxia.local', 'SecurePassword2026*'),
+                              icon: const Icon(Icons.business_rounded, size: 14),
+                              label: const Text('Empresa', style: TextStyle(fontSize: 11.5)),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                                side: BorderSide(color: AppColors.secondary.withValues(alpha: 0.5)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
 
                 // Campo Correo
                 Text(
-                  'Correo electrónico',
+                  'Correo electronico',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -169,16 +273,16 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   validator: (value) {
                     final email = value?.trim() ?? '';
                     if (email.isEmpty || !email.contains('@') || email.length > 254) {
-                      return 'Escribe un correo válido.';
+                      return 'Escribe un correo valido.';
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: 18),
 
-                // Campo Contraseña
+                // Campo Contrasena
                 Text(
-                  'Contraseña',
+                  'Contrasena',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -192,30 +296,62 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   obscureText: true,
                   autofillHints: const [AutofillHints.password],
                   decoration: const InputDecoration(
-                    hintText: '••••••••',
+                    hintText: '•••••••••••••',
                     prefixIcon: Icon(Icons.lock_outline_rounded, size: 20),
                   ),
                   validator: (value) {
                     final password = value ?? '';
                     if (password.isEmpty) {
-                      return 'Escribe tu contraseña.';
+                      return 'Escribe tu contrasena.';
                     }
                     if (utf8.encode(password).length > 72) {
-                      return 'La contraseña supera el límite permitido.';
+                      return 'La contrasena supera el limite permitido.';
                     }
                     return null;
                   },
                   onFieldSubmitted: (_) => _submit(),
                 ),
 
+                const SizedBox(height: 10),
+
+                // Checkbox: Mantener sesion iniciada y recordar credenciales
+                InkWell(
+                  onTap: () => setState(() => _rememberMe = !_rememberMe),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: Checkbox(
+                            value: _rememberMe,
+                            activeColor: AppColors.primary,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            onChanged: (val) => setState(() => _rememberMe = val ?? true),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Mantener sesion iniciada y recordar credenciales',
+                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
                 if (auth.message != null) ...[
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   _MessageBanner(message: auth.message!),
                 ],
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 22),
 
-                // Botón Iniciar Sesión con estilo SaaS moderno
+                // Boton Iniciar Sesion con estilo SaaS moderno
                 FilledButton(
                   onPressed: auth.isSubmitting ? null : _submit,
                   style: FilledButton.styleFrom(
@@ -233,7 +369,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       : const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text('Iniciar sesión'),
+                            Text('Iniciar sesion'),
                             SizedBox(width: 8),
                             Icon(Icons.arrow_forward_rounded, size: 18),
                           ],
@@ -247,7 +383,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       child: Text(
-                        'O CONTINÚA CON',
+                        'O CONTINUA CON',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -261,7 +397,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Botón Google Sign-In estilizado
+                // Boton Google Sign-In estilizado
                 OutlinedButton(
                   onPressed: auth.isSubmitting ? null : _signInWithGoogle,
                   style: OutlinedButton.styleFrom(
@@ -286,7 +422,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      '¿Aún no tienes cuenta?',
+                      'Aun no tienes cuenta?',
                       style: TextStyle(
                         color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                         fontSize: 13.5,
@@ -312,7 +448,6 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Fondo decorativo con gradiente moderno y luces sutiles
           Positioned.fill(
             child: Container(
               color: isDark ? AppColors.darkBg : AppColors.lightBg,
@@ -343,29 +478,24 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             ),
           ),
 
-          // Selector de tema flotante arriba a la derecha
           const Positioned(
             top: 24,
             right: 24,
             child: ThemeModeToggle(),
           ),
 
-          // Contenido principal responsive
           Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
               child: wide
                   ? Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 480),
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 48),
-                            child: _BrandHeroPanel(isDark: isDark),
-                          ),
+                          constraints: const BoxConstraints(maxWidth: 440),
+                          child: const _BrandingSection(),
                         ),
+                        const SizedBox(width: 60),
                         formCard,
                       ],
                     )
@@ -378,16 +508,16 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   }
 }
 
-class _BrandHeroPanel extends StatelessWidget {
-  const _BrandHeroPanel({required this.isDark});
-
-  final bool isDark;
+class _BrandingSection extends StatelessWidget {
+  const _BrandingSection();
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -401,13 +531,14 @@ class _BrandHeroPanel extends StatelessWidget {
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.bolt_rounded, size: 16, color: AppColors.primary),
+              Icon(Icons.verified_rounded, size: 14, color: AppColors.primary),
               SizedBox(width: 6),
               Text(
-                'Plataforma SaaS de Transporte y Fletes',
+                'LOGISTICA B2B COLOMBIA',
                 style: TextStyle(
-                  fontSize: 12.5,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
                   color: AppColors.primary,
                 ),
               ),
@@ -416,72 +547,70 @@ class _BrandHeroPanel extends StatelessWidget {
         ),
         const SizedBox(height: 24),
         Text(
-          'Conectamos generadores de carga, conductores y empresas legalizadoras.',
-          style: TextStyle(
-            fontSize: 34,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -1,
-            height: 1.2,
-            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+          'Conectamos generadores de carga con transportistas certificados.',
+          style: theme.textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.8,
+            height: 1.15,
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
         Text(
-          'Calculadora de costos operativos en tiempo real, monitoreo de fletes colombianos, ofertas transparentes y seguimiento del viaje.',
-          style: TextStyle(
-            fontSize: 15.5,
-            height: 1.6,
+          'Plataforma integral con calculo predictivo de costos operativos (Gemelo Digital), trazabilidad satelital en vivo con OpenStreetMap y contratos inteligentes con validez juridica.',
+          style: theme.textTheme.bodyLarge?.copyWith(
             color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+            height: 1.45,
           ),
         ),
-        const SizedBox(height: 36),
-        _FeatureBadge(
-          icon: Icons.calculate_rounded,
-          title: 'Calculadora de Costos y Peajes',
-          subtitle: 'Cálculo de ACPM (\$10.500 COP), peajes y desgaste por ruta en tiempo real.',
-          isDark: isDark,
+        const SizedBox(height: 32),
+        const _FeatureCheckItem(
+          icon: Icons.speed_rounded,
+          title: 'Gemelo Digital y Simulacion de Rutas',
+          subtitle: 'Calculo exacto de peajes, consumo de ACPM y costo por kilometro segun el Ministerio de Transporte.',
         ),
         const SizedBox(height: 18),
-        _FeatureBadge(
+        const _FeatureCheckItem(
           icon: Icons.shield_rounded,
-          title: 'Seguridad y Cumplimiento',
-          subtitle: 'Validación de manifiestos, legalizaciones y firmas electrónicas.',
-          isDark: isDark,
+          title: 'Seguridad y Verificacion RUNT',
+          subtitle: 'Control riguroso de antecedentes, matricula de vehiculos y polizas de transporte vigentes.',
+        ),
+        const SizedBox(height: 18),
+        const _FeatureCheckItem(
+          icon: Icons.receipt_long_rounded,
+          title: 'Legalizacion y Actas Digitales',
+          subtitle: 'Generacion instantanea de cumplidos de entrega conforme al Articulo 981 del Codigo de Comercio.',
         ),
       ],
     );
   }
 }
 
-class _FeatureBadge extends StatelessWidget {
-  const _FeatureBadge({
+class _FeatureCheckItem extends StatelessWidget {
+  const _FeatureCheckItem({
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.isDark,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
-  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkSurface : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-            ),
-            boxShadow: SaasDecoration.softShadow(isDark),
+            color: AppColors.primary.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: AppColors.primary, size: 20),
+          child: Icon(icon, size: 20, color: AppColors.primary),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -490,18 +619,15 @@ class _FeatureBadge extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14.5,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
               ),
               const SizedBox(height: 2),
               Text(
                 subtitle,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12.5,
                   color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  height: 1.35,
                 ),
               ),
             ],
@@ -517,64 +643,39 @@ class _MessageBanner extends StatelessWidget {
 
   final String message;
 
-  // Detecta si el mensaje indica que la cuenta de Google no está registrada
-  bool get _isNotRegistered =>
-      message.toLowerCase().contains('no está registrada') ||
-      message.toLowerCase().contains('no registrada') ||
-      message.toLowerCase().contains('debes crear una cuenta');
-
   @override
   Widget build(BuildContext context) {
+    final isDuplicate = message.contains('ya está registrado') || message.contains('ya existe');
+    final isError = !isDuplicate;
+
+    final bg = isError ? AppColors.errorContainer : AppColors.warningContainer;
+    final border = isError ? AppColors.error : AppColors.warning;
+    final iconColor = isError ? AppColors.error : AppColors.warning;
+    final icon = isError ? Icons.error_outline_rounded : Icons.info_outline_rounded;
+
     return Container(
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _isNotRegistered
-            ? const Color(0xFFFFF7ED)
-            : AppColors.errorContainer.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _isNotRegistered
-              ? const Color(0xFFF97316).withValues(alpha: 0.4)
-              : AppColors.error.withValues(alpha: 0.3),
-        ),
+        color: bg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: border),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                _isNotRegistered ? Icons.person_off_outlined : Icons.error_outline_rounded,
-                color: _isNotRegistered ? const Color(0xFFF97316) : AppColors.error,
-                size: 20,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  message,
-                  style: TextStyle(
-                    color: _isNotRegistered ? const Color(0xFF9A3412) : const Color(0xFF991B1B),
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w500,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (_isNotRegistered) ...[
-            const SizedBox(height: 10),
-            FilledButton.icon(
-              onPressed: () => GoRouter.of(context).go('/crear-cuenta'),
-              icon: const Icon(Icons.person_add_rounded, size: 18),
-              label: const Text('Crear mi cuenta en TRAXIA'),
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFF97316),
-                padding: const EdgeInsets.symmetric(vertical: 10),
+          Icon(icon, size: 20, color: iconColor),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontSize: 13,
+                color: iconColor,
+                fontWeight: FontWeight.w500,
+                height: 1.35,
               ),
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -589,7 +690,9 @@ class _GoogleLogo extends StatelessWidget {
     return SizedBox(
       width: 18,
       height: 18,
-      child: CustomPaint(painter: _GoogleLogoPainter()),
+      child: CustomPaint(
+        painter: _GoogleLogoPainter(),
+      ),
     );
   }
 }
@@ -597,60 +700,28 @@ class _GoogleLogo extends StatelessWidget {
 class _GoogleLogoPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final r = size.width / 2;
-    final center = Offset(r, r);
-    final paint = Paint()..isAntiAlias = true;
+    final double w = size.width;
+    final double h = size.height;
+    final center = Offset(w / 2, h / 2);
+    final radius = w / 2;
 
-    // Azul
-    paint.color = const Color(0xFF4285F4);
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: r),
-      -0.785,
-      1.57,
-      true,
-      paint,
-    );
+    final bluePaint = Paint()..color = const Color(0xFF4285F4)..style = PaintingStyle.fill;
+    final redPaint = Paint()..color = const Color(0xFFEA4335)..style = PaintingStyle.fill;
+    final yellowPaint = Paint()..color = const Color(0xFFFBBC05)..style = PaintingStyle.fill;
+    final greenPaint = Paint()..color = const Color(0xFF34A853)..style = PaintingStyle.fill;
 
-    // Verde
-    paint.color = const Color(0xFF34A853);
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: r),
-      0.785,
-      1.57,
-      true,
-      paint,
-    );
+    canvas.drawCircle(center, radius, bluePaint);
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    canvas.drawArc(rect, -0.785, 1.57, true, redPaint);
+    canvas.drawArc(rect, 0.785, 1.57, true, yellowPaint);
+    canvas.drawArc(rect, 2.356, 1.57, true, greenPaint);
 
-    // Amarillo
-    paint.color = const Color(0xFFFBBC05);
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: r),
-      2.356,
-      1.57,
-      true,
-      paint,
-    );
+    final whiteCenterPaint = Paint()..color = Colors.white..style = PaintingStyle.fill;
+    canvas.drawCircle(center, radius * 0.55, whiteCenterPaint);
 
-    // Rojo
-    paint.color = const Color(0xFFEA4335);
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: r),
-      3.927,
-      1.57,
-      true,
-      paint,
-    );
-
-    // Centro blanco
-    paint.color = Colors.white;
-    canvas.drawCircle(center, r * 0.58, paint);
-
-    // Barra horizontal de la G
-    paint.color = const Color(0xFF4285F4);
-    canvas.drawRect(
-      Rect.fromLTWH(center.dx - 1, center.dy - r * 0.22, r * 1.05, r * 0.44),
-      paint,
-    );
+    final blueBarPaint = Paint()..color = const Color(0xFF4285F4)..style = PaintingStyle.fill;
+    final barRect = Rect.fromLTWH(center.dx, center.dy - radius * 0.22, radius * 0.9, radius * 0.44);
+    canvas.drawRect(barRect, blueBarPaint);
   }
 
   @override

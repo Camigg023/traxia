@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../theme/app_colors.dart';
@@ -137,6 +137,19 @@ class _ColombiaRouteMapState extends State<ColombiaRouteMap> {
 
     // Llanos Orientales y Amazonía / Orinoquía
     if (cleanCity.contains('villavicencio') || cleanCity.contains('meta')) return const LatLng(4.1420, -73.6266);
+    // Amazonia y Fronteras (Leticia, Mocoa, San Jose, etc.)
+    if (cleanCity.contains('leticia') || cleanCity.contains('amazonas') || cleanDept.contains('amazonas')) {
+      return const LatLng(-4.2153, -69.9406);
+    }
+    if (cleanCity.contains('mitu') || cleanDept.contains('vaupes')) return const LatLng(1.2519, -70.2333);
+    if (cleanCity.contains('inirida') || cleanDept.contains('guainia')) return const LatLng(3.8653, -67.9239);
+    if (cleanCity.contains('guaviare')) return const LatLng(2.5729, -72.6459);
+    if (cleanCity.contains('carreno') || cleanDept.contains('vichada')) return const LatLng(6.1890, -67.4859);
+    if (cleanCity.contains('arauca')) return const LatLng(7.0847, -70.7591);
+    if (cleanCity.contains('mocoa') || cleanCity.contains('putumayo') || cleanDept.contains('putumayo')) {
+      return const LatLng(1.1528, -76.6521);
+    }
+
     if (cleanCity.contains('yopal') || cleanCity.contains('casanare')) return const LatLng(5.3378, -72.3959);
     if (cleanCity.contains('florencia') || cleanCity.contains('caqueta') || cleanCity.contains('caquetá')) {
       return const LatLng(1.6144, -75.6062);
