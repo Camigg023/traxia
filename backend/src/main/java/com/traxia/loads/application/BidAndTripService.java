@@ -154,6 +154,13 @@ public class BidAndTripService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<TripResponse> getCompletedTrips(UUID userPublicId) {
+        return getMyTrips(userPublicId).stream()
+                .filter(t -> "DELIVERED".equals(t.status()))
+                .toList();
+    }
+
     @Transactional
     public TripResponse startTrip(UUID tripPublicId, UUID driverPublicId) {
         TripEntity trip = tripRepository.findByPublicId(tripPublicId)

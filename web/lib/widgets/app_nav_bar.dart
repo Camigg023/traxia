@@ -12,6 +12,7 @@ enum AppNavSection {
   publishLoad,
   loads,
   trips,
+  completedTrips,
   bids,
   account,
 }
@@ -196,6 +197,13 @@ class AppNavBar extends ConsumerWidget implements PreferredSizeWidget {
                     isActive: currentSection == AppNavSection.trips,
                     onTap: () => context.go('/viajes?tab=activos'),
                   ),
+                  const SizedBox(width: 4),
+                  _DesktopNavLink(
+                    icon: Icons.verified_rounded,
+                    label: 'Viajes Completados',
+                    isActive: currentSection == AppNavSection.completedTrips,
+                    onTap: () => context.go('/viajes?tab=completados'),
+                  ),
                 ],
 
                 const Spacer(),
@@ -296,6 +304,15 @@ class AppNavBar extends ConsumerWidget implements PreferredSizeWidget {
                 onTap: () {
                   Navigator.pop(ctx);
                   context.go('/viajes?tab=activos');
+                },
+              ),
+              _MobileMenuItem(
+                icon: Icons.verified_rounded,
+                label: 'Viajes Completados',
+                isActive: currentSection == AppNavSection.completedTrips,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.go('/viajes?tab=completados');
                 },
               ),
               const SizedBox(height: 16),

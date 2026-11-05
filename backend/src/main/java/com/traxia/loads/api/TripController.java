@@ -48,6 +48,12 @@ public class TripController {
         return bidAndTripService.getMyTrips(userPublicId);
     }
 
+    @GetMapping("/trips/completed")
+    public List<TripResponse> getCompletedTrips(@AuthenticationPrincipal Jwt jwt) {
+        UUID userPublicId = UUID.fromString(jwt.getSubject());
+        return bidAndTripService.getCompletedTrips(userPublicId);
+    }
+
     @PostMapping("/trips/{id}/start")
     public TripResponse startTrip(
             @PathVariable UUID id,

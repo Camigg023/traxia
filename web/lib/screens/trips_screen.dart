@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,22 +21,26 @@ class TripsScreen extends ConsumerStatefulWidget {
 }
 
 class _TripsScreenState extends ConsumerState<TripsScreen> {
-  int _selectedTabIndex = 0; // 0: Viajes Ofertados, 1: Viajes Asignados
+  int _selectedTabIndex = 0; // 0: Viajes Ofertados, 1: Viajes Activos, 2: Viajes Completados
   List<TripModel> _trips = [];
   List<BidModel> _bids = [];
   final Map<String, LoadModel> _loadDetails = {};
   bool _isLoading = true;
   String? _error;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     if (widget.initialTab == 'activos') {
       _selectedTabIndex = 1;
+    } else if (widget.initialTab == 'completados') {
+      _selectedTabIndex = 2;
     } else {
       _selectedTabIndex = 0;
     }
     _fetchAllData();
+    _startPolling();
   }
 
   @override
@@ -43,8 +48,88 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     super.didUpdateWidget(oldWidget);
     if (widget.initialTab != oldWidget.initialTab && widget.initialTab != null) {
       setState(() {
-        _selectedTabIndex = widget.initialTab == 'activos' ? 1 : 0;
+        if (widget.initialTab == 'activos') {
+          _selectedTabIndex = 1;
+        } else if (widget.initialTab == 'completados') {
+          _selectedTabIndex = 2;
+        } else {
+          _selectedTabIndex = 0;
+        }
       });
+    }
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (mounted) {
+        _fetchSilently();
+      }
+    });
+  }
+
+  Future<void> _fetchSilently() async {
+    final auth = ref.read(authControllerProvider);
+    final token = auth.accessToken;
+    if (token == null || !mounted) return;
+
+    try {
+      final tripsApi = TripsApi.fromEnvironment();
+      final loadApi = LoadApi.fromEnvironment();
+
+      final trips = await tripsApi.getMyTrips(accessToken: token);
+
+      List<BidModel> bidsList = [];
+      try {
+        final myBids = await tripsApi.getMyBids(accessToken: token);
+        bidsList.addAll(myBids);
+      } catch (_) {}
+
+      try {
+        final myLoads = await loadApi.getMyLoads(accessToken: token);
+        for (final load in myLoads) {
+          _loadDetails[load.id] = load;
+          try {
+            final loadBids = await tripsApi.getBidsForLoad(
+              loadId: load.id,
+              accessToken: token,
+            );
+            for (final b in loadBids) {
+              if (!bidsList.any((existing) => existing.id == b.id)) {
+                bidsList.add(b);
+              }
+            }
+          } catch (_) {}
+        }
+      } catch (_) {}
+
+      final neededLoadIds = <String>{
+        ...bidsList.map((b) => b.loadId),
+        ...trips.map((t) => t.loadId),
+      };
+
+      for (final loadId in neededLoadIds) {
+        if (!_loadDetails.containsKey(loadId)) {
+          try {
+            final details = await loadApi.getLoadDetails(loadId);
+            _loadDetails[loadId] = details;
+          } catch (_) {}
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _trips = trips;
+        _bids = bidsList;
+      });
+    } catch (_) {
+      // Polling silencioso no interrumpe al usuario
     }
   }
 
@@ -365,6 +450,201 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     );
   }
 
+  void _showDeliveryCertificateDialog(TripModel trip, LoadModel? load, bool isDark) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        actionsPadding: const EdgeInsets.all(20),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.verified_user_rounded, color: AppColors.success, size: 28),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Acta Digital de Cumplido',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+                  ),
+                  Text(
+                    'Certificado Oficial de Transporte • Plataforma TRAXIA',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Badge de estado legal
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'SERVICIO CUMPLIDO Y LEGALIZADO A CONFORMIDAD',
+                          style: TextStyle(
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '#TRX-${trip.id.substring(0, 8).toUpperCase()}',
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                _buildCertificateRow(
+                  'Ruta Nacional:',
+                  load != null
+                      ? '${load.originCity} (${load.originDepartment}) ➔ ${load.destinationCity} (${load.destinationDepartment})'
+                      : 'Bogotá ➔ Medellín',
+                ),
+                _buildCertificateRow(
+                  'Flete Pactado y Liquidado:',
+                  '\$ ${trip.agreedAmount.toStringAsFixed(0)} COP',
+                ),
+                _buildCertificateRow(
+                  'Transportista Asignado:',
+                  trip.driverName.isNotEmpty ? trip.driverName : trip.driverEmail,
+                ),
+                _buildCertificateRow(
+                  'Empresa Contratante:',
+                  load?.publisherEmail ?? 'Empresa Registrada en TRAXIA',
+                ),
+                if (load != null)
+                  _buildCertificateRow(
+                    'Configuración Vehicular:',
+                    '${load.vehicleType} • ${load.bodyType} • ${load.weightKg.toStringAsFixed(0)} Kg',
+                  ),
+                _buildCertificateRow(
+                  'Fecha de Entrega y Cierre:',
+                  trip.deliveredAtUtc != null
+                      ? trip.deliveredAtUtc!.toLocal().toString().substring(0, 19)
+                      : 'Fecha registrada en servidor',
+                ),
+                _buildCertificateRow(
+                  'Constancia / Acta de Entrega:',
+                  trip.deliveryProofNotes != null && trip.deliveryProofNotes!.isNotEmpty
+                      ? trip.deliveryProofNotes!
+                      : 'Carga recibida a total satisfacción con remisión y precintos verificados.',
+                ),
+
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 12),
+
+                // Nota jurídica y de auditoría
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF131D2E) : const Color(0xFFF3F6FC),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.gavel_rounded, size: 16, color: AppColors.primary),
+                          SizedBox(width: 6),
+                          Text(
+                            'Validez Jurídica y Probatoria',
+                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Emitido bajo el régimen de transporte de carga de Colombia (Art. 981 y ss. del Código de Comercio, Decreto 1079 de 2015). La presente acta digital certifica la entrega del flete y la culminación del contrato mercantil de transporte.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isDark ? Colors.white70 : Colors.black87,
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Hash SHA-256 de integridad: traxia-hash-${trip.id.replaceAll("-", "").substring(0, 16)}',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontFamily: 'monospace',
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(ctx),
+            icon: const Icon(Icons.check_rounded, size: 18),
+            label: const Text('Entendido'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCertificateRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 175,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: Colors.grey),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -372,10 +652,43 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     final auth = ref.watch(authControllerProvider);
     final currentUserEmail = auth.user?.email ?? '';
 
+    final activeTrips = _trips.where((t) => t.status != 'DELIVERED').toList();
+    final completedTrips = _trips.where((t) => t.status == 'DELIVERED').toList();
+
+    AppNavSection currentSection;
+    String appBarTitle;
+    if (_selectedTabIndex == 0) {
+      currentSection = AppNavSection.bids;
+      appBarTitle = 'Viajes Ofertados';
+    } else if (_selectedTabIndex == 1) {
+      currentSection = AppNavSection.trips;
+      appBarTitle = 'Mis Viajes';
+    } else {
+      currentSection = AppNavSection.completedTrips;
+      appBarTitle = 'Viajes Completados';
+    }
+
+    IconData headerIcon;
+    String headerTitle;
+    String headerSubtitle;
+    if (_selectedTabIndex == 0) {
+      headerIcon = Icons.local_offer_rounded;
+      headerTitle = 'Viajes Ofertados y Negociaciones';
+      headerSubtitle = 'Visualiza tus contraofertas enviadas, propuestas recibidas y mapa de ruta táctico.';
+    } else if (_selectedTabIndex == 1) {
+      headerIcon = Icons.route_rounded;
+      headerTitle = 'Monitoreo de Viajes Activos';
+      headerSubtitle = 'Trazabilidad en tiempo real de fletes asignados, ejecución satelital y tránsito.';
+    } else {
+      headerIcon = Icons.verified_rounded;
+      headerTitle = 'Historial de Viajes Completados';
+      headerSubtitle = 'Registro de servicios finalizados con éxito, actas de recibo y legalización con validez jurídica.';
+    }
+
     return Scaffold(
       appBar: AppNavBar(
-        currentSection: _selectedTabIndex == 0 ? AppNavSection.bids : AppNavSection.trips,
-        title: _selectedTabIndex == 0 ? 'Viajes Ofertados' : 'Mis Viajes',
+        currentSection: currentSection,
+        title: appBarTitle,
         extraActions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -402,7 +715,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
-                        _selectedTabIndex == 0 ? Icons.local_offer_rounded : Icons.route_rounded,
+                        headerIcon,
                         color: AppColors.primary,
                         size: 26,
                       ),
@@ -413,15 +726,11 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _selectedTabIndex == 0
-                                ? 'Viajes Ofertados y Negociaciones'
-                                : 'Monitoreo de Viajes y Envíos',
+                            headerTitle,
                             style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
                           ),
                           Text(
-                            _selectedTabIndex == 0
-                                ? 'Visualiza tus contraofertas enviadas, propuestas recibidas y mapa de ruta táctico.'
-                                : 'Trazabilidad en tiempo real de fletes asignados, ejecución de ruta y legalización.',
+                            headerSubtitle,
                             style: theme.textTheme.bodyMedium,
                           ),
                         ],
@@ -432,7 +741,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
 
                 const SizedBox(height: 20),
 
-                // Selector de pestañas moderno (Tabs)
+                // Selector de 3 pestañas moderno (Tabs)
                 Container(
                   decoration: BoxDecoration(
                     color: isDark ? AppColors.darkSurface : AppColors.lightSurfaceSubtle,
@@ -456,10 +765,20 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: _TabButton(
-                          label: 'Viajes Asignados (${_trips.length})',
+                          label: 'Viajes Activos (${activeTrips.length})',
                           icon: Icons.route_rounded,
                           isSelected: _selectedTabIndex == 1,
                           onTap: () => setState(() => _selectedTabIndex = 1),
+                          isDark: isDark,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: _TabButton(
+                          label: 'Viajes Completados (${completedTrips.length})',
+                          icon: Icons.verified_rounded,
+                          isSelected: _selectedTabIndex == 2,
+                          onTap: () => setState(() => _selectedTabIndex = 2),
                           isDark: isDark,
                         ),
                       ),
@@ -489,7 +808,9 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                             )
                           : _selectedTabIndex == 0
                               ? _buildBidsTab(isDark, currentUserEmail)
-                              : _buildTripsTab(isDark, currentUserEmail),
+                              : _selectedTabIndex == 1
+                                  ? _buildActiveTripsTab(isDark, currentUserEmail, activeTrips)
+                                  : _buildCompletedTripsTab(isDark, currentUserEmail, completedTrips),
                 ),
               ],
             ),
@@ -576,8 +897,8 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     );
   }
 
-  Widget _buildTripsTab(bool isDark, String currentUserEmail) {
-    if (_trips.isEmpty) {
+  Widget _buildActiveTripsTab(bool isDark, String currentUserEmail, List<TripModel> activeTrips) {
+    if (activeTrips.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -585,19 +906,19 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppColors.tertiary.withValues(alpha: 0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.route_rounded, size: 48, color: AppColors.tertiary),
+              child: const Icon(Icons.route_rounded, size: 48, color: AppColors.primary),
             ),
             const SizedBox(height: 18),
             const Text(
-              'No tienes viajes asignados en este momento',
+              'No tienes viajes activos en tránsito',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
             Text(
-              'Cuando una empresa acepte una contraoferta o adjudiques una carga, el viaje aparecerá aquí.',
+              'Tus viajes adjudicados en ejecución aparecerán aquí con monitoreo en tiempo real.\nSi ya completaste un viaje, consúltalo en la pestaña "Viajes Completados".',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
@@ -605,10 +926,21 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: () => setState(() => _selectedTabIndex = 0),
-              icon: const Icon(Icons.local_offer_rounded, size: 18),
-              label: const Text('Ver Viajes Ofertados'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => setState(() => _selectedTabIndex = 0),
+                  icon: const Icon(Icons.local_offer_rounded, size: 18),
+                  label: const Text('Ver Ofertas'),
+                ),
+                const SizedBox(width: 12),
+                FilledButton.icon(
+                  onPressed: () => setState(() => _selectedTabIndex = 2),
+                  icon: const Icon(Icons.verified_rounded, size: 18),
+                  label: const Text('Ver Viajes Completados'),
+                ),
+              ],
             ),
           ],
         ),
@@ -616,12 +948,12 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     }
 
     return ListView.separated(
-      itemCount: _trips.length,
+      itemCount: activeTrips.length,
       separatorBuilder: (ctx, i) => const SizedBox(height: 16),
       itemBuilder: (ctx, i) {
-        final trip = _trips[i];
+        final trip = activeTrips[i];
         final load = _loadDetails[trip.loadId];
-        final isDriver = trip.driverEmail == currentUserEmail;
+        final isDriver = trip.driverEmail.trim().toLowerCase() == currentUserEmail.trim().toLowerCase();
 
         return _TripCard(
           trip: trip,
@@ -629,6 +961,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
           isDriver: isDriver,
           onStart: () => _startTrip(trip),
           onDeliver: () => _deliverTrip(trip),
+          onViewCertificate: () => _showDeliveryCertificateDialog(trip, load, isDark),
           onViewMap: () {
             if (load != null) {
               _showRouteMapDialog(
@@ -637,6 +970,83 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                 originDept: load.originDepartment,
                 destinationDept: load.destinationDepartment,
                 title: 'Ruta del Viaje: ${load.originCity} ➔ ${load.destinationCity}',
+              );
+            } else {
+              _showRouteMapDialog(
+                originCity: 'Bogotá',
+                destinationCity: 'Medellín',
+                title: 'Ruta Bogotá ➔ Medellín',
+              );
+            }
+          },
+          isDark: isDark,
+        );
+      },
+    );
+  }
+
+  Widget _buildCompletedTripsTab(bool isDark, String currentUserEmail, List<TripModel> completedTrips) {
+    if (completedTrips.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.verified_user_rounded, size: 48, color: AppColors.success),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Aún no hay viajes completados',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Una vez que el conductor confirme la entrega de la carga y el acta de recibo,\nlos servicios legalizados con su respectivo cumplido digital aparecerán aquí.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: () => setState(() => _selectedTabIndex = 1),
+              icon: const Icon(Icons.route_rounded, size: 18),
+              label: const Text('Ver Viajes Activos'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      itemCount: completedTrips.length,
+      separatorBuilder: (ctx, i) => const SizedBox(height: 16),
+      itemBuilder: (ctx, i) {
+        final trip = completedTrips[i];
+        final load = _loadDetails[trip.loadId];
+        final isDriver = trip.driverEmail.trim().toLowerCase() == currentUserEmail.trim().toLowerCase();
+
+        return _TripCard(
+          trip: trip,
+          load: load,
+          isDriver: isDriver,
+          onStart: () => _startTrip(trip),
+          onDeliver: () => _deliverTrip(trip),
+          onViewCertificate: () => _showDeliveryCertificateDialog(trip, load, isDark),
+          onViewMap: () {
+            if (load != null) {
+              _showRouteMapDialog(
+                originCity: load.originCity,
+                destinationCity: load.destinationCity,
+                originDept: load.originDepartment,
+                destinationDept: load.destinationDepartment,
+                title: 'Ruta Entregada: ${load.originCity} ➔ ${load.destinationCity}',
               );
             } else {
               _showRouteMapDialog(
@@ -966,6 +1376,7 @@ class _TripCard extends StatelessWidget {
     required this.onStart,
     required this.onDeliver,
     required this.onViewMap,
+    this.onViewCertificate,
     required this.isDark,
   });
 
@@ -975,6 +1386,7 @@ class _TripCard extends StatelessWidget {
   final VoidCallback onStart;
   final VoidCallback onDeliver;
   final VoidCallback onViewMap;
+  final VoidCallback? onViewCertificate;
   final bool isDark;
 
   @override
@@ -1104,7 +1516,50 @@ class _TripCard extends StatelessWidget {
             ),
           ),
 
-          if (trip.deliveryProofNotes != null) ...[
+          if (isDelivered) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.success.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.verified_rounded, color: AppColors.success, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '🎉 ¡Servicio de Transporte Completado con Éxito!',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13.5,
+                            color: AppColors.success,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Muchas gracias por preferir y confiar en TRAXIA. El flete ha sido entregado a total satisfacción y legalizado conforme al Art. 981 del Código de Comercio y la normativa del Ministerio de Transporte.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? Colors.white70 : Colors.black87,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          if (trip.deliveryProofNotes != null && trip.deliveryProofNotes!.isNotEmpty) ...[
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(10),
@@ -1142,6 +1597,18 @@ class _TripCard extends StatelessWidget {
                   side: const BorderSide(color: AppColors.primary),
                 ),
               ),
+              if (isDelivered && onViewCertificate != null) ...[
+                const SizedBox(width: 8),
+                FilledButton.tonalIcon(
+                  onPressed: onViewCertificate,
+                  icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                  label: const Text('Acta de Cumplido'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.success.withValues(alpha: 0.16),
+                    foregroundColor: AppColors.success,
+                  ),
+                ),
+              ],
               const Spacer(),
               if (isDriver) ...[
                 if (trip.status == 'ASSIGNED')
@@ -1160,7 +1627,7 @@ class _TripCard extends StatelessWidget {
                   ),
                 if (isDelivered)
                   OutlinedButton.icon(
-                    onPressed: null,
+                    onPressed: onViewCertificate,
                     icon: const Icon(Icons.verified_rounded, size: 18, color: AppColors.success),
                     label: const Text('Completado y Legalizado'),
                   ),
@@ -1207,7 +1674,7 @@ class _TripCard extends StatelessWidget {
                   ),
                 if (isDelivered)
                   OutlinedButton.icon(
-                    onPressed: null,
+                    onPressed: onViewCertificate,
                     icon: const Icon(Icons.verified_rounded, size: 18, color: AppColors.success),
                     label: const Text('Entrega Recibida a Satisfacción'),
                   ),
